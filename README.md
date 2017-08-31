@@ -122,6 +122,20 @@ func handle(ctx context.Context, evt *eda.Event, conn eda.Conn) error {
 }
 ```
 
+Running this example (from the examples/clock directory) would produce the output like this:
+
+```
+EDA_ADDR=nats://127.0.0.1:4222 EDA_CLUSTER=eda-test EDA_CLIENT_ID=clock go run examples/clock/main.go
+[eda] 2017/08/31 14:40:49 connect(id=clock addr=nats://127.0.0.1:4223 cluster=eda-test)
+[eda] 2017/08/31 14:40:49 subscribe(id=clock stream=clock durable=false serial=true
+[eda] 2017/08/31 14:40:50 publish(type=tick stream=clock)
+[eda] 2017/08/31 14:40:51 publish(type=tock stream=clock)
+[eda] 2017/08/31 14:40:52 publish(type=tick stream=clock)
+[eda] 2017/08/31 14:40:53 publish(type=tock stream=clock)
+[eda] 2017/08/31 14:40:54 publish(type=tick stream=clock)
+...forever...
+```
+
 ## License
 
 MIT
