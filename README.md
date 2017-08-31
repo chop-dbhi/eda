@@ -37,13 +37,14 @@ In any case, the suggested command line options for full durability:
 
 ```
 $ nats-streaming-server \
+  --cluster_id eda-test \
   --store file \
   --dir data \
   --max_channels 0 \
   --max_subs 0 \
   --max_msgs 0 \
   --max_bytes 0 \
-  --max_age 0s
+  --max_age 0s \
 ```
 
 ## Example
@@ -67,9 +68,9 @@ func main() {
   // Establish a client connection to the cluster.
   conn, err := eda.Connect(
     context.Background(),
-    os.Getenv("EDA_ADDR"),
-    os.Getenv("EDA_CLUSTER"),
-    os.Getenv("EDA_CLIENT_ID"),
+    "nats://localhost:4222",
+    "eda-test",
+    "clock-example",
   )
   if err != nil {
     log.Fatal(err)
