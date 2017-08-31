@@ -65,7 +65,8 @@ import (
 )
 
 func main() {
-  // Establish a client connection to the cluster.
+  // Establish a client connection to the cluster. The arguments
+  // are the NATS address, cluster id, and client id.
   conn, err := eda.Connect(
     context.Background(),
     "nats://localhost:4222",
