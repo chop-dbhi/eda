@@ -2,16 +2,15 @@ language: go
 sudo: false
 go:
   - tip
+  - 1.9.x
   - 1.8.x
   - 1.7.x
-  - 1.6.x
 
 install:
   - go get -t ./...
 
 before_script:
   - $(exit $(go fmt ./... | wc -l))
-  - go vet ./...
 
 script:
-  - go test -v -i -race ./...
+  - go test -v -race ./...
