@@ -18,18 +18,18 @@ var (
 	}
 
 	createNode = `
-	MERGE (n:Event {id: {id}})
-	ON CREATE SET
-		n.type = {type},
-		n.time = {time},
-		n.client = {client},
-		n.encoding = {encoding}
+		MERGE (n:Event {id: {id}})
+		ON CREATE SET
+			n.type = {type},
+			n.time = {time},
+			n.client = {client},
+			n.encoding = {encoding}
 
-	ON MATCH SET
-		n.type = {type},
-		n.time = {time},
-		n.client = {client},
-		n.encoding = {encoding}
+		ON MATCH SET
+			n.type = {type},
+			n.time = {time},
+			n.client = {client},
+			n.encoding = {encoding}
 	`
 
 	createEdge = `
