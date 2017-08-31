@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package pb;
+
+message Event {
+	string id = 1;
+	// int64 time = 2;
+	string type = 3;
+	// string version = 4;
+	string cause = 5;
+	string client = 6;
+	bytes data = 7;
+  string encoding = 8;
+}
