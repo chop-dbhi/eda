@@ -29,7 +29,7 @@ func resetDurable(conn stan.Conn, stream, queueName, durableName string) error {
 	return sub.Unsubscribe()
 }
 
-// standConn is an implementation of Conn.
+// stanConn is an implementation of Conn.
 type stanConn struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -301,12 +301,14 @@ func Connect(ctx context.Context, addr, cluster, client string) (Conn, error) {
 
 	nc, err := nats.Connect(
 		addr,
+		// Try reconnecting indefinitely.
 		nats.MaxReconnects(-1),
 	)
 	if err != nil {
 		return nil, err
 	}
 
+	// Initialize streaming connection.
 	snc, err := stan.Connect(cluster, client, stan.NatsConn(nc))
 	if err != nil {
 		return nil, err
