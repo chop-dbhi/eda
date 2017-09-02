@@ -106,11 +106,6 @@ func (*encodableJSON) Type() string {
 }
 
 func (e *encodableJSON) Encode() ([]byte, error) {
-	switch x := e.v.(type) {
-	case *decodable:
-		return x.b, nil
-	}
-
 	return json.Marshal(e.v)
 }
 

@@ -125,17 +125,24 @@ func (c *stanConn) Close() error {
 
 func (c *stanConn) Publish(stream string, typ string, data Encodable, opts ...PublishOption) (string, error) {
 	var (
+		err      error
 		datab    []byte
 		encoding string
 	)
 
 	if data != nil {
-		var err error
-		encoding = data.Type()
-		datab, err = data.Encode()
-		if err != nil {
-			return "", err
+		// Decodable.
+		if dec, ok := data.(*decodable); ok {
+			encoding = data.Type()
+			datab, err = data.Encode()
+		} else {
+			encoding = data.Type()
+			datab, err = data.Encode()
 		}
+	}
+
+	if err != nil {
+		return "", err
 	}
 
 	var o PublishOptions
