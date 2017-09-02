@@ -9,6 +9,8 @@ import (
 	"github.com/chop-dbhi/eda"
 )
 
+var stream = os.Getenv("EDA_STREAM")
+
 func main() {
 	// Establish a client connection to the cluster.
 	conn, err := eda.Connect(
@@ -24,7 +26,7 @@ func main() {
 
 	// Subscribe to the "clock" stream and use the `handle` function.
 	_, err = conn.Subscribe(
-		"clock",
+		stream,
 		handle,
 		eda.Durable(false),
 		eda.StartNew(),
@@ -34,7 +36,7 @@ func main() {
 	}
 
 	// Kick off first event.
-	_, err = conn.Publish("clock", "tick", nil)
+	_, err = conn.Publish(stream, "tick", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -62,6 +64,6 @@ func handle(ctx context.Context, evt *eda.Event, conn eda.Conn) error {
 	time.Sleep(time.Second)
 
 	// Publish next event without any data.
-	_, err := conn.Publish("clock", next, nil, eda.Cause(evt.ID))
+	_, err := conn.Publish(stream, next, nil, eda.Cause(evt.ID))
 	return err
 }
