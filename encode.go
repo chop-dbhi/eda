@@ -7,6 +7,16 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// Decoders are the set of decoders
+var Decoders = map[string]Decoder{
+	"bytes": DecodeBytes,
+	"json":  DecodeJSON,
+	"proto": DecodeProto,
+}
+
+// Decoder wraps bytes into a Decodable for deserialization.
+type Decoder func(b []byte, v interface{}) error
+
 // Encodable encapsulates encodable data.
 type Encodable interface {
 	// Type returns the type of encodable.
@@ -44,24 +54,14 @@ func (r *decodable) Encode() ([]byte, error) {
 }
 
 func (r *decodable) Decode(v interface{}) error {
-	switch r.t {
-	case "json":
-		return decodeJSON(r.b, v)
-
-	case "bytes":
-		return decodeBytes(r.b, v)
-
-	case "proto":
-		return decodeProto(r.b, v)
-
-	case "nil":
-		return nil
+	if decoder, ok := Decoders[r.t]; ok {
+		return decoder(r.b, v)
 	}
 
 	return errors.New("unknown encoding: " + r.t)
 }
 
-func decodeBytes(b []byte, v interface{}) error {
+func DecodeBytes(b []byte, v interface{}) error {
 	x, ok := v.(*[]byte)
 	if !ok {
 		return errors.New("pointer to []byte required")
@@ -70,11 +70,11 @@ func decodeBytes(b []byte, v interface{}) error {
 	return nil
 }
 
-func decodeJSON(b []byte, v interface{}) error {
+func DecodeJSON(b []byte, v interface{}) error {
 	return json.Unmarshal(b, v)
 }
 
-func decodeProto(b []byte, v interface{}) error {
+func DecodeProto(b []byte, v interface{}) error {
 	x, ok := v.(proto.Message)
 	if !ok {
 		return errors.New("proto.Message required")
@@ -93,6 +93,7 @@ func (e encodableBytes) Encode() ([]byte, error) {
 	return e, nil
 }
 
+// Bytes wraps a byte slice as an encodable.
 func Bytes(b []byte) Encodable {
 	return encodableBytes(b)
 }
@@ -109,6 +110,7 @@ func (e *encodableJSON) Encode() ([]byte, error) {
 	return json.Marshal(e.v)
 }
 
+// JSON wraps a value intended to be JSON-encoded as an encodable.
 func JSON(v interface{}) Encodable {
 	return &encodableJSON{v}
 }
@@ -125,6 +127,7 @@ func (e *encodableProto) Encode() ([]byte, error) {
 	return proto.Marshal(e.v)
 }
 
+// Proto wraps a protobuf message as an encodable.
 func Proto(msg proto.Message) Encodable {
 	return &encodableProto{msg}
 }

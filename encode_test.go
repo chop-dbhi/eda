@@ -84,7 +84,7 @@ func TestBytesEncodable(t *testing.T) {
 
 	// Decode.
 	var n []byte
-	if err = decodeBytes(b, &n); err != nil {
+	if err = DecodeBytes(b, &n); err != nil {
 		t.Fatal(err)
 	}
 
@@ -108,7 +108,7 @@ func TestJSONEncodable(t *testing.T) {
 
 	// Decode.
 	var n Event
-	if err = decodeJSON(b, &n); err != nil {
+	if err = DecodeJSON(b, &n); err != nil {
 		t.Fatal(err)
 	}
 
@@ -132,7 +132,7 @@ func TestProtoEncodable(t *testing.T) {
 
 	// Decode.
 	var n pb.Event
-	if err := decodeProto(b, &n); err != nil {
+	if err := DecodeProto(b, &n); err != nil {
 		t.Fatal(err)
 	}
 
