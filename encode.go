@@ -97,20 +97,6 @@ func Bytes(b []byte) Encodable {
 	return encodableBytes(b)
 }
 
-type encodableRawJSON json.RawMessage
-
-func (encodableRawJSON) Type() string {
-	return "json"
-}
-
-func (e encodableRawJSON) Encode() ([]byte, error) {
-	return e, nil
-}
-
-func RawJSON(b json.RawMessage) Encodable {
-	return encodableRawJSON(b)
-}
-
 type encodableJSON struct {
 	v interface{}
 }

@@ -25,22 +25,6 @@ func TestBytesDecodable(t *testing.T) {
 	}
 }
 
-func TestRawJSONDecodable(t *testing.T) {
-	dec := &decodable{
-		t: "json",
-		b: []byte(`{"foo": 1}`),
-	}
-
-	var v json.RawMessage
-	if err := dec.Decode(&v); err != nil {
-		t.Fatal(err)
-	}
-
-	if !bytes.Equal(dec.b, v) {
-		t.Fatalf("decoded raw JSON not equal: %v != %v", dec.b, v)
-	}
-}
-
 func TestJSONDecodable(t *testing.T) {
 	x := map[string]int{
 		"foo": 1,
@@ -132,31 +116,6 @@ func TestJSONEncodable(t *testing.T) {
 		t.Fatalf("decoded JSON not equal: %v != %v", n, r)
 	}
 
-}
-
-func TestRawJSONEncodable(t *testing.T) {
-	r := []byte(`{"foo":1}`)
-	e := RawJSON(r)
-
-	// Encode.
-	b, err := e.Encode()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !bytes.Equal(b, r) {
-		t.Fatalf("json encoded bytes not equal: %v != %v", b, r)
-	}
-
-	// Decode.
-	var n json.RawMessage
-	if err = decodeJSON(b, &n); err != nil {
-		t.Fatal(err)
-	}
-
-	if !bytes.Equal(n, r) {
-		t.Fatalf("decoded bytes not equal: %v != %v", n, r)
-	}
 }
 
 func TestProtoEncodable(t *testing.T) {
