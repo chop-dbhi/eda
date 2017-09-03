@@ -133,8 +133,8 @@ func (c *stanConn) Publish(stream string, typ string, data Encodable, opts ...Pu
 	if data != nil {
 		// Check for decoable and use that directly.
 		if dec, ok := data.(*decodable); ok {
-			encoding = data.Type()
-			datab, err = data.Encode()
+			encoding = dec.Type()
+			datab, err = dec.Encode()
 		} else {
 			encoding = data.Type()
 			datab, err = data.Encode()
