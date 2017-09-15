@@ -14,7 +14,7 @@ func TestBytesDecodable(t *testing.T) {
 		t:   "bytes",
 		b:   []byte("foo"),
 		e:   true,
-		enc: GetEncoder("bytes"),
+		enc: encMap["bytes"],
 	}
 
 	var v []byte
@@ -37,7 +37,7 @@ func TestJSONDecodable(t *testing.T) {
 		t:   "json",
 		b:   b,
 		e:   true,
-		enc: GetEncoder("json"),
+		enc: encMap["json"],
 	}
 
 	var v map[string]int
@@ -61,7 +61,7 @@ func TestProtoDecodable(t *testing.T) {
 		t:   "proto",
 		b:   b,
 		e:   true,
-		enc: GetEncoder("proto"),
+		enc: encMap["proto"],
 	}
 
 	var v pb.Event
