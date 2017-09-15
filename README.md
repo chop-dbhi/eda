@@ -59,12 +59,19 @@ import (
   "context"
   "log"
   "os"
+  "signal"
   "time"
 
   "github.com/chop-dbhi/eda"
 )
 
 func main() {
+  if err != run(); err != nil {
+    log.Fatal(err)
+  }
+}
+
+func run() error {
   // Establish a client connection to the cluster. The arguments
   // are the NATS address, cluster id, and client id.
   conn, err := eda.Connect(
@@ -74,28 +81,32 @@ func main() {
     "clock-example",
   )
   if err != nil {
-    log.Fatal(err)
+    return err
   }
   defer conn.Close()
 
   // Subscribe to the "clock" stream and use the `handle` function (below).
-  _, err = conn.Subscribe("clock", handle)
+  sub, err = conn.Subscribe("clock", handle, nil)
   if err != nil {
-    log.Fatal(err)
+    return err
   }
+  defer sub.Close()
 
   // Bootstrap by publishing the first event. This takes the stream
   // to publish to, the event type, and any event data.
-  _, err = conn.Publish("clock", "tick", nil)
+  _, err = conn.Publish("clock", &eda.Event{
+    Type: "tick",
+  })
   if err != nil {
-    log.Fatal(err)
+    return err
   }
 
-  // Wait for error or interrupt.
-  err = conn.Wait()
-  if err != nil {
-    log.Fatal(err)
-  }
+	sig := make(chan os.Signal)
+	signal.Notify(sig, os.Interrupt, os.Kill)
+
+  <-sig
+
+  return nil
 }
 
 // The event handler function receives a context, the event, and a copy
@@ -117,7 +128,10 @@ func handle(ctx context.Context, evt *eda.Event, conn eda.Conn) error {
   time.Sleep(time.Second)
 
   // Publish next event and include ID of causal event.
-  _, err := conn.Publish("clock", next, nil, eda.Cause(evt.ID))
+  _, err := conn.Publish("clock", &eda.Event{
+    Type: next,
+    Cause: evt.ID,
+  })
   return err
 }
 ```
@@ -125,14 +139,14 @@ func handle(ctx context.Context, evt *eda.Event, conn eda.Conn) error {
 Running this example (from the examples/clock directory) would produce the output like this:
 
 ```
-EDA_ADDR=nats://127.0.0.1:4222 EDA_CLUSTER=eda-test EDA_CLIENT_ID=clock go run examples/clock/main.go
-[eda] 2017/08/31 14:40:49 connect(id=clock addr=nats://127.0.0.1:4223 cluster=eda-test)
-[eda] 2017/08/31 14:40:49 subscribe(id=clock stream=clock durable=false serial=true
-[eda] 2017/08/31 14:40:50 publish(type=tick stream=clock)
-[eda] 2017/08/31 14:40:51 publish(type=tock stream=clock)
-[eda] 2017/08/31 14:40:52 publish(type=tick stream=clock)
-[eda] 2017/08/31 14:40:53 publish(type=tock stream=clock)
-[eda] 2017/08/31 14:40:54 publish(type=tick stream=clock)
+go run examples/clock/main.go
+[eda] 2017/08/31 14:40:49 tick
+[eda] 2017/08/31 14:40:49 tock
+[eda] 2017/08/31 14:40:50 tick
+[eda] 2017/08/31 14:40:51 tock
+[eda] 2017/08/31 14:40:52 tick
+[eda] 2017/08/31 14:40:53 tock
+[eda] 2017/08/31 14:40:54 tick
 ...forever...
 ```
 
