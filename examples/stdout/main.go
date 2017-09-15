@@ -41,6 +41,12 @@ func handle(ctx context.Context, evt *eda.Event, conn eda.Conn) error {
 }
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	var (
 		addr    string
 		cluster string
@@ -62,7 +68,7 @@ func main() {
 		client,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer conn.Close()
 
@@ -70,7 +76,7 @@ func main() {
 		Durable: false,
 	})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer sub.Close()
 
@@ -78,4 +84,6 @@ func main() {
 	signal.Notify(sig, os.Interrupt, os.Kill)
 
 	<-sig
+
+	return nil
 }

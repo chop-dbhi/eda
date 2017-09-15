@@ -101,8 +101,8 @@ func run() error {
     return err
   }
 
-	sig := make(chan os.Signal)
-	signal.Notify(sig, os.Interrupt, os.Kill)
+  sig := make(chan os.Signal)
+  signal.Notify(sig, os.Interrupt, os.Kill)
 
   <-sig
 

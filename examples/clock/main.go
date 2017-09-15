@@ -12,6 +12,12 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	var (
 		addr    string
 		cluster string
@@ -33,7 +39,7 @@ func main() {
 		client,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer conn.Close()
 
@@ -60,29 +66,33 @@ func main() {
 			Type:  next,
 			Cause: evt.ID,
 		})
+
 		return err
 	}
 
 	// Subscribe to the "clock" stream and use the `handle` function.
-	_, err = conn.Subscribe(
+	sub, err := conn.Subscribe(
 		stream,
 		handle,
 		nil,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	defer sub.Close()
 
 	// Kick off first event.
 	_, err = conn.Publish(stream, &eda.Event{
 		Type: "tick",
 	})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	sig := make(chan os.Signal)
 	signal.Notify(sig, os.Interrupt, os.Kill)
 
 	<-sig
+
+	return nil
 }

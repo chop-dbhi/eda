@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"log"
+	"os"
+	"os/signal"
 
 	"github.com/chop-dbhi/eda"
 	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
@@ -39,6 +41,12 @@ var (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	var (
 		addr      string
 		cluster   string
@@ -51,20 +59,20 @@ func main() {
 	flag.StringVar(&cluster, "cluster", "test-cluster", "NATS cluster name.")
 	flag.StringVar(&client, "client", "neo4j-causal-graph", "Client connection ID.")
 	flag.StringVar(&stream, "stream", "test", "Stream name.")
-	flag.StringVar(&neo4jBolt, "neo4j.bolt", "", "Neo4j bolt address.")
+	flag.StringVar(&neo4jBolt, "neo4j.bolt", "bolt://localhost:7687", "Neo4j bolt address.")
 
 	flag.Parse()
 
 	driver := bolt.NewDriver()
 	neoConn, err := driver.OpenNeo(neo4jBolt)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer neoConn.Close()
 
 	for _, q := range startupQueries {
 		if _, err := neoConn.ExecNeo(q, nil); err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 
@@ -101,21 +109,24 @@ func main() {
 		client,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer conn.Close()
 
 	// Subscribe to the target stream.
-	_, err = conn.Subscribe(stream, handle, &eda.SubscriptionOptions{
+	sub, err := conn.Subscribe(stream, handle, &eda.SubscriptionOptions{
 		Durable:  true,
 		Backfill: true,
 	})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	defer sub.Close()
 
-	err = conn.Wait()
-	if err != nil {
-		log.Fatal(err)
-	}
+	sig := make(chan os.Signal)
+	signal.Notify(sig, os.Interrupt, os.Kill)
+
+	<-sig
+
+	return nil
 }
