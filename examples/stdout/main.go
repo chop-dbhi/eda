@@ -3,14 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 
 	"github.com/chop-dbhi/eda"
 )
-
-var stream = os.Getenv("EDA_STREAM")
 
 func handle(ctx context.Context, evt *eda.Event, conn eda.Conn) error {
 	var data interface{}
@@ -41,25 +41,41 @@ func handle(ctx context.Context, evt *eda.Event, conn eda.Conn) error {
 }
 
 func main() {
+	var (
+		addr    string
+		cluster string
+		client  string
+		stream  string
+	)
+
+	flag.StringVar(&addr, "addr", "nats://localhost:4222", "NATS address")
+	flag.StringVar(&cluster, "cluster", "test-cluster", "NATS cluster name.")
+	flag.StringVar(&client, "client", "eda-stdout", "Client connection ID.")
+	flag.StringVar(&stream, "stream", "events", "Stream name.")
+
+	flag.Parse()
+
 	// Establish a client connection to the cluster.
 	conn, err := eda.Connect(
-		context.Background(),
-		os.Getenv("EDA_ADDR"),
-		os.Getenv("EDA_CLUSTER"),
-		os.Getenv("EDA_CLIENT_ID"),
+		addr,
+		cluster,
+		client,
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
 
-	_, err = conn.Subscribe(stream, handle)
+	sub, err := conn.Subscribe(stream, handle, &eda.SubscriptionOptions{
+		Durable: false,
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer sub.Close()
 
-	err = conn.Wait()
-	if err != nil {
-		log.Fatal(err)
-	}
+	sig := make(chan os.Signal)
+	signal.Notify(sig, os.Interrupt, os.Kill)
+
+	<-sig
 }

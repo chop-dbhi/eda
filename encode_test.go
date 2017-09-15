@@ -11,8 +11,10 @@ import (
 
 func TestBytesDecodable(t *testing.T) {
 	dec := &decodable{
-		t: "bytes",
-		b: []byte("foo"),
+		t:   "bytes",
+		b:   []byte("foo"),
+		e:   true,
+		enc: GetEncoder("bytes"),
 	}
 
 	var v []byte
@@ -32,8 +34,10 @@ func TestJSONDecodable(t *testing.T) {
 	b, _ := json.Marshal(x)
 
 	dec := &decodable{
-		t: "json",
-		b: b,
+		t:   "json",
+		b:   b,
+		e:   true,
+		enc: GetEncoder("json"),
 	}
 
 	var v map[string]int
@@ -54,8 +58,10 @@ func TestProtoDecodable(t *testing.T) {
 	b, _ := proto.Marshal(x)
 
 	dec := &decodable{
-		t: "proto",
-		b: b,
+		t:   "proto",
+		b:   b,
+		e:   true,
+		enc: GetEncoder("proto"),
 	}
 
 	var v pb.Event
@@ -84,7 +90,7 @@ func TestBytesEncodable(t *testing.T) {
 
 	// Decode.
 	var n []byte
-	if err = DecodeBytes(b, &n); err != nil {
+	if err = (&bytesEncoder{}).Decode(b, &n); err != nil {
 		t.Fatal(err)
 	}
 
@@ -108,14 +114,13 @@ func TestJSONEncodable(t *testing.T) {
 
 	// Decode.
 	var n Event
-	if err = DecodeJSON(b, &n); err != nil {
+	if err = (&jsonEncoder{}).Decode(b, &n); err != nil {
 		t.Fatal(err)
 	}
 
-	if r != n {
+	if r.ID != n.ID {
 		t.Fatalf("decoded JSON not equal: %v != %v", n, r)
 	}
-
 }
 
 func TestProtoEncodable(t *testing.T) {
@@ -132,7 +137,7 @@ func TestProtoEncodable(t *testing.T) {
 
 	// Decode.
 	var n pb.Event
-	if err := DecodeProto(b, &n); err != nil {
+	if err := (&protoEncoder{}).Decode(b, &n); err != nil {
 		t.Fatal(err)
 	}
 

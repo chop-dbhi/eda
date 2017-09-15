@@ -3,12 +3,41 @@ syntax = "proto3";
 package pb;
 
 message Event {
+  // Unique ID of the event.
 	string id = 1;
+
+  // Timestamp of the event. This is provided by the library.
 	// int64 time = 2;
+
+  // The event type.
 	string type = 3;
-	// string version = 4;
+
+  // An optional event ID that is the cause of this event.
 	string cause = 5;
+
+  // The client that produced this event.
 	string client = 6;
-	bytes data = 7;
+
+  // Schema is the name of the schema of the encoded data.
+  // This will likely be a name and optionally a version suffix.
+	string schema = 4;
+
+  // Encoding of the event data.
   string encoding = 8;
+
+  // Encoded event data.
+  bytes data = 7;
+
+  // An aggregate identifier if the event is specific to a defined
+  // aggregate in the domain.
+  Aggregate aggregate = 9;
+
+  // Arbitrary metadata as a set of key-value pairs. This can be used
+  // for adding upstream user/client info, authorization tokens, etc.
+  map<string, string> meta = 10;
+}
+
+message Aggregate {
+  string type = 1;
+  string id = 2;
 }

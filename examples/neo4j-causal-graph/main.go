@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
-	"os"
 
 	"github.com/chop-dbhi/eda"
 	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
@@ -39,8 +39,24 @@ var (
 )
 
 func main() {
+	var (
+		addr      string
+		cluster   string
+		client    string
+		stream    string
+		neo4jBolt string
+	)
+
+	flag.StringVar(&addr, "addr", "nats://localhost:4222", "NATS address")
+	flag.StringVar(&cluster, "cluster", "test-cluster", "NATS cluster name.")
+	flag.StringVar(&client, "client", "neo4j-causal-graph", "Client connection ID.")
+	flag.StringVar(&stream, "stream", "test", "Stream name.")
+	flag.StringVar(&neo4jBolt, "neo4j.bolt", "", "Neo4j bolt address.")
+
+	flag.Parse()
+
 	driver := bolt.NewDriver()
-	neoConn, err := driver.OpenNeo(os.Getenv("NEO4J_BOLT"))
+	neoConn, err := driver.OpenNeo(neo4jBolt)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,10 +96,9 @@ func main() {
 
 	// Establish a client connection to the cluster.
 	conn, err := eda.Connect(
-		context.Background(),
-		os.Getenv("EDA_ADDR"),
-		os.Getenv("EDA_CLUSTER"),
-		os.Getenv("EDA_CLIENT_ID"),
+		addr,
+		cluster,
+		client,
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -91,7 +106,10 @@ func main() {
 	defer conn.Close()
 
 	// Subscribe to the target stream.
-	_, err = conn.Subscribe(os.Getenv("EDA_STREAM"), handle)
+	_, err = conn.Subscribe(stream, handle, &eda.SubscriptionOptions{
+		Durable:  true,
+		Backfill: true,
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
