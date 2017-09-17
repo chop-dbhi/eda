@@ -13,10 +13,11 @@ var (
 	encMux = &sync.Mutex{}
 
 	encMap = map[string]encoder{
-		"bytes": &bytesEncoder{},
-		"json":  &jsonEncoder{},
-		"proto": &protoEncoder{},
-		"nil":   &nilEncoder{},
+		"bytes":  &bytesEncoder{},
+		"string": &stringEncoder{},
+		"json":   &jsonEncoder{},
+		"proto":  &protoEncoder{},
+		"nil":    &nilEncoder{},
 	}
 )
 
@@ -33,6 +34,15 @@ func Bytes(b []byte) Data {
 		t:   "bytes",
 		v:   b,
 		enc: encMap["bytes"],
+	}
+}
+
+// String returns Data that encodes and decodes a string.
+func String(s string) Data {
+	return &decodable{
+		t:   "string",
+		v:   s,
+		enc: encMap["string"],
 	}
 }
 
@@ -84,6 +94,25 @@ func (e *bytesEncoder) Decode(b []byte, v interface{}) error {
 		return errors.New("pointer to []byte required")
 	}
 	*x = b
+	return nil
+}
+
+type stringEncoder struct{}
+
+func (e *stringEncoder) Encode(v interface{}) ([]byte, error) {
+	if b, ok := v.(string); ok {
+		return []byte(b), nil
+	}
+
+	return nil, errors.New("string required")
+}
+
+func (e *stringEncoder) Decode(b []byte, v interface{}) error {
+	x, ok := v.(*string)
+	if !ok {
+		return errors.New("pointer to string required")
+	}
+	*x = string(b)
 	return nil
 }
 

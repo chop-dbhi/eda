@@ -27,6 +27,24 @@ func TestBytesDecodable(t *testing.T) {
 	}
 }
 
+func TestStringDecodable(t *testing.T) {
+	dec := &decodable{
+		t:   "string",
+		b:   []byte("foo"),
+		e:   true,
+		enc: encMap["string"],
+	}
+
+	var v string
+	if err := dec.Decode(&v); err != nil {
+		t.Fatal(err)
+	}
+
+	if string(dec.b) != v {
+		t.Fatalf("decoded string not equal: %v != %v", dec.b, v)
+	}
+}
+
 func TestJSONDecodable(t *testing.T) {
 	x := map[string]int{
 		"foo": 1,
