@@ -7,15 +7,6 @@ import (
 	stan "github.com/nats-io/go-nats-streaming"
 )
 
-var (
-	// Default subscription options.
-	DefaultSubscriptionOptions = &SubscriptionOptions{
-		Durable: true,
-		Timeout: 3 * time.Second,
-		Serial:  true,
-	}
-)
-
 // Event is the top-level type that wraps the event data.
 type Event struct {
 	// Stream is the stream this event was published on.

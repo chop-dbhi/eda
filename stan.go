@@ -114,9 +114,13 @@ func (c *stanConn) Publish(stream string, evt *Event) (string, error) {
 
 func (c *stanConn) Subscribe(stream string, handle Handler, opts *SubscriptionOptions) (Subscription, error) {
 	if opts == nil {
-		opts = &(*DefaultSubscriptionOptions)
+		opts = &SubscriptionOptions{}
 	} else {
 		opts = &(*opts)
+	}
+
+	if opts.Timeout == 0 {
+		opts.Timeout = stan.DefaultAckWait
 	}
 
 	// TODO: Any long-term issue with this?
@@ -196,22 +200,20 @@ func (c *stanConn) Subscribe(stream string, handle Handler, opts *SubscriptionOp
 		startPos = stanpb.StartPosition_NewOnly
 	}
 
-	// Timeout.
-	if opts.Timeout == 0 {
-		opts.Timeout = DefaultSubscriptionOptions.Timeout
-	}
-
 	subOpts := []stan.SubscriptionOption{
 		// Set the initial start position.
 		stan.StartAt(startPos),
-
-		// Length of time to wait before the server resends the message.
-		stan.AckWait(opts.Timeout),
 
 		// Use manual acks to manage errors.
 		stan.SetManualAckMode(),
 	}
 
+	// Length of time to wait before the server resends the message.
+	if opts.Timeout > 0 {
+		subOpts = append(subOpts, stan.AckWait(opts.Timeout))
+	}
+
+	// Force messages to be processed in ordered with manual acking.
 	if opts.Serial {
 		subOpts = append(subOpts, stan.MaxInflight(1))
 	}
