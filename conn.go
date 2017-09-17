@@ -61,7 +61,7 @@ func (e *Event) Is(types ...string) bool {
 }
 
 // Handler is the event handler type for creating subscriptions.
-type Handler func(ctx context.Context, evt *Event, conn Conn) error
+type Handler func(ctx context.Context, evt *Event) error
 
 // Conn is a connection interface to the underlying event streams backend.
 type Conn interface {

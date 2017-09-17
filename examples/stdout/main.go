@@ -12,7 +12,7 @@ import (
 	"github.com/chop-dbhi/eda"
 )
 
-func handle(ctx context.Context, evt *eda.Event, conn eda.Conn) error {
+func handle(ctx context.Context, evt *eda.Event) error {
 	var data interface{}
 
 	switch evt.Data.Type() {

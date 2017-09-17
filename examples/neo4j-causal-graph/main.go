@@ -76,7 +76,7 @@ func run() error {
 		}
 	}
 
-	handle := func(ctx context.Context, evt *eda.Event, _ eda.Conn) error {
+	handle := func(ctx context.Context, evt *eda.Event) error {
 		log.Printf("received event: %s", evt.Type)
 		_, err = neoConn.ExecNeo(createNode, map[string]interface{}{
 			"id":       evt.ID,

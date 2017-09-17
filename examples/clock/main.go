@@ -44,7 +44,7 @@ func run() error {
 	defer conn.Close()
 
 	// Subscription handler.
-	handle := func(ctx context.Context, evt *eda.Event, conn eda.Conn) error {
+	handle := func(ctx context.Context, evt *eda.Event) error {
 		log.Println(evt.Type)
 
 		var next string

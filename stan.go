@@ -175,7 +175,7 @@ func (c *stanConn) Subscribe(stream string, handle Handler, opts *SubscriptionOp
 		}()
 
 		// Handler error implies a timeout or implementation issue.
-		if err := handle(ctx, evt, c); err != nil {
+		if err := handle(ctx, evt); err != nil {
 			c.logger.Printf("[%s] handler error: %s", c.client, err)
 			return
 		}
