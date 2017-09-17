@@ -93,8 +93,8 @@ func (c *stanConn) Publish(stream string, evt *Event) (string, error) {
 		Client:   c.client,
 		Data:     datab,
 		Encoding: encoding,
+		Meta:     evt.Meta,
 	})
-
 	if err != nil {
 		return "", err
 	}
@@ -154,6 +154,7 @@ func (c *stanConn) Subscribe(stream string, handle Handler, opts *SubscriptionOp
 			Cause:  e.Cause,
 			Client: e.Client,
 			Data:   &dec,
+			Meta:   e.Meta,
 			msg:    msg,
 		}
 
