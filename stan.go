@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"log"
+	"os"
 	"time"
 
 	"github.com/chop-dbhi/eda/internal/pb"
@@ -44,7 +45,7 @@ func (s *stanSubscription) Unsubscribe() error {
 
 // stanConn is an implementation of Conn.
 type stanConn struct {
-	logger *log.Logger
+	logger Logger
 
 	client  string
 	cluster string
@@ -53,7 +54,7 @@ type stanConn struct {
 	stan stan.Conn
 }
 
-// Close closes all subscriptions and the underlying connections.
+// Close the underlying connection to the stream backend.
 func (c *stanConn) Close() error {
 	if err := c.stan.Close(); err != nil {
 		c.logger.Printf("[%s] connection close error: %s", c.client, err)
@@ -157,7 +158,8 @@ func (c *stanConn) Subscribe(stream string, handle Handler, opts *SubscriptionOp
 		}
 
 		// Use ack timeout as max context timeout to signal handler components.
-		ctx, _ := context.WithTimeout(context.Background(), opts.Timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), opts.Timeout)
+		defer cancel()
 
 		// Recover from panic to properly close connection.
 		defer func() {
@@ -234,8 +236,44 @@ func (c *stanConn) Subscribe(stream string, handle Handler, opts *SubscriptionOp
 	return sub, nil
 }
 
-// Connect establishes a connection to the event stream backend.
-func Connect(addr, cluster, client string) (Conn, error) {
+// Logger is a minimal interface required for internal logging.
+// This is compatible with the stdlib log.Logger type.
+type Logger interface {
+	Print(v ...interface{})
+	Printf(f string, v ...interface{})
+}
+
+type ConnectOptions struct {
+	Logger Logger
+}
+
+func (o *ConnectOptions) Apply(opts ...ConnectOption) {
+	for _, f := range opts {
+		f(o)
+	}
+}
+
+type ConnectOption func(o *ConnectOptions)
+
+func WithLogger(l Logger) ConnectOption {
+	return func(o *ConnectOptions) {
+		o.Logger = l
+	}
+}
+
+// Connect establishes a connection to the streaming backend.
+func Connect(addr, cluster, client string, opts ...ConnectOption) (Conn, error) {
+	o := &ConnectOptions{
+		Logger: log.New(os.Stderr, "[eda] ", log.LstdFlags),
+	}
+
+	o.Apply(opts...)
+
+	// Logging disabled. Re-initialize to discard.
+	if o.Logger == nil {
+		o.Logger = log.New(ioutil.Discard, "", 0)
+	}
+
 	nc, err := nats.Connect(
 		addr,
 		// Try reconnecting indefinitely.
@@ -251,17 +289,10 @@ func Connect(addr, cluster, client string) (Conn, error) {
 		return nil, err
 	}
 
-	var logger *log.Logger
-	if DefaultLogger == nil {
-		logger = log.New(ioutil.Discard, "", 0)
-	} else {
-		logger = &(*DefaultLogger)
-	}
-
 	conn := stanConn{
 		client:  client,
 		cluster: cluster,
-		logger:  logger,
+		logger:  o.Logger,
 		stan:    snc,
 		nats:    nc,
 	}

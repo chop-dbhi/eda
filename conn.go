@@ -2,17 +2,12 @@ package eda
 
 import (
 	"context"
-	"log"
-	"os"
 	"time"
 
 	stan "github.com/nats-io/go-nats-streaming"
 )
 
 var (
-	// Default logger used for connections.
-	DefaultLogger = log.New(os.Stderr, "[eda] ", log.LstdFlags)
-
 	// Default subscription options.
 	DefaultSubscriptionOptions = &SubscriptionOptions{
 		Durable: true,
