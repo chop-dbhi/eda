@@ -73,6 +73,10 @@ func (c *stanConn) Publish(stream string, evt *Event) (string, error) {
 		encoding string
 	)
 
+	if evt == nil {
+		evt = &Event{}
+	}
+
 	if evt.Data == nil {
 		encoding = "nil"
 	} else {
