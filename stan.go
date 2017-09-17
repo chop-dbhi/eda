@@ -170,11 +170,10 @@ func (c *stanConn) Subscribe(stream string, handle Handler, opts *SubscriptionOp
 		ctx, cancel := context.WithTimeout(context.Background(), opts.Timeout)
 		defer cancel()
 
-		// Recover from panic to properly close connection.
+		// Recover and log handler panic.
 		defer func() {
 			if err := recover(); err != nil {
-				c.Close()
-				panic(err)
+				c.logger.Printf("[%s] recovered handler panic: %s", c.client, err)
 			}
 		}()
 
