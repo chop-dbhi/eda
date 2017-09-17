@@ -12,7 +12,7 @@ import (
 var (
 	encMux = &sync.Mutex{}
 
-	encMap = map[string]Encoder{
+	encMap = map[string]encoder{
 		"bytes": &bytesEncoder{},
 		"json":  &jsonEncoder{},
 		"proto": &protoEncoder{},
@@ -22,7 +22,7 @@ var (
 
 // Encoder is an interface for encoding and decoding native types
 // into event data.
-type Encoder interface {
+type encoder interface {
 	Encode(v interface{}) ([]byte, error)
 	Decode(b []byte, v interface{}) error
 }
@@ -134,7 +134,7 @@ type decodable struct {
 	b   []byte
 	t   string
 	e   bool
-	enc Encoder
+	enc encoder
 }
 
 func (r *decodable) Type() string {
