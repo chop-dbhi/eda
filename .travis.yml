@@ -11,6 +11,10 @@ install:
 
 before_script:
   - $(exit $(go fmt ./... | wc -l))
+  - wget https://github.com/nats-io/nats-streaming-server/releases/download/v0.5.0/nats-streaming-server-v0.5.0-linux-amd64.zip
+  - unzip nats-streaming-server-v0.5.0-linux-amd64.zip
+  - cd nats-streaming-server-v0.5.0-linux-amd64 && ./nats-streaming-server &
+  - sleep 1
 
 script:
   - go test -v -race ./...
