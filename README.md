@@ -7,7 +7,7 @@ eda is a library for implementing event-driven architectures. It provides a thin
 
 ## Status
 
-**The library is in an Alpha stage and looking feedback and discussions on API design and scope.**
+**The library is in an Alpha stage and looking feedback and discussions on API design and scope. Check out the [issues](https://github.com/chop-dbhi/eda/issues) for topics.**
 
 ## Use Case
 
@@ -37,7 +37,7 @@ In any case, the suggested command line options for full durability:
 
 ```
 $ nats-streaming-server \
-  --cluster_id eda-test \
+  --cluster_id test-cluster \
   --store file \
   --dir data \
   --max_channels 0 \
@@ -47,108 +47,81 @@ $ nats-streaming-server \
   --max_age 0s \
 ```
 
-## Example
+## Get Started
 
-Below is a fully working example of a "clock" agent that sends two events
-"tick" and "tock" on the "clock" stream.
+### Connecting to the backend
+
+The first step is to establish a connection to the NATS Streaming server. Below uses the default address and cluster ID. `Connect` also takes a client ID which identifies the connection itself. Be thoughtful of the client ID since it will be used as part of the key for tracking progress in streams for subscribers. It is also added to events published by this connection for traceability.
 
 ```go
-package main
-
-import (
-  "context"
-  "log"
-  "os"
-  "signal"
-  "time"
-
-  "github.com/chop-dbhi/eda"
+// Establish a connection to NATS specifiying the server address, the cluster
+// ID , and a client ID for this connection.
+conn, _ := eda.Connect(
+  "nats://localhost:4222",
+  "test-cluster",
+  "test-client",
 )
 
-func main() {
-  if err != run(); err != nil {
-    log.Fatal(err)
+// Close on exit.
+defer conn.Close()
+```
+
+### Publishing events
+
+To publish an event, simply use the `Publish` method passing an `Event` value.
+
+```go
+id, _ := conn.Publish("subjects", &eda.Event{
+  Type: "subject-enrolled",
+  Data: eda.JSON(&Subject{
+    ID: "3292329",
+  }),
+})
+```
+
+By convention, `Type` should be past tense since it is describing something that already happened. The event `Data` should provide sufficient information on the event for consumers. There are helper functions to encode bytes, strings, JSON, and Protocol Buffer types.
+
+A couple additional fields can be supplied including `Cause` which is an identifier of the upstream event (or something else) that caused this event and `Meta` which is a map of arbitrary key-value pairs for additional information.
+
+Returned is the unique ID of the event and an error if publishing to the server failed.
+
+### Consuming events
+
+The first thing to do is create a `Handler` function that will be used to *handle* events as they are received from the server. You can see the signature of the handler below which includes a `context.Context` value and the received event.
+
+```go
+handle := func(ctx context.Context, evt *eda.Event) error {
+  switch evt.Type {
+  case "subject-enrolled":
+    var s Subject
+    if err := evt.Data.Decode(&s); err != nil {
+      return err
+    }
+
+    // Do something with subject.
   }
-}
-
-func run() error {
-  // Establish a client connection to the cluster. The arguments
-  // are the NATS address, cluster id, and client id.
-  conn, err := eda.Connect(
-    context.Background(),
-    "nats://localhost:4222",
-    "eda-test",
-    "clock-example",
-  )
-  if err != nil {
-    return err
-  }
-  defer conn.Close()
-
-  // Subscribe to the "clock" stream and use the `handle` function (below).
-  sub, err = conn.Subscribe("clock", handle, nil)
-  if err != nil {
-    return err
-  }
-  defer sub.Close()
-
-  // Bootstrap by publishing the first event. This takes the stream
-  // to publish to, the event type, and any event data.
-  _, err = conn.Publish("clock", &eda.Event{
-    Type: "tick",
-  })
-  if err != nil {
-    return err
-  }
-
-  sig := make(chan os.Signal)
-  signal.Notify(sig, os.Interrupt, os.Kill)
-
-  <-sig
 
   return nil
 }
-
-// The event handler function receives a context, the event, and a copy
-// of the connection in order to publish new events.
-func handle(ctx context.Context, evt *eda.Event, conn eda.Conn) error {
-  var next string
-
-  // Determine next event.
-  switch evt.Type {
-  case "tick":
-    next = "tock"
-  case "tock":
-    next = "tick"
-  default:
-    return nil
-  }
-
-  // Delay..
-  time.Sleep(time.Second)
-
-  // Publish next event and include ID of causal event.
-  _, err := conn.Publish("clock", &eda.Event{
-    Type: next,
-    Cause: evt.ID,
-  })
-  return err
-}
 ```
 
-Running this example (from the examples/clock directory) would produce the output like this:
+To start receiving events, a subscription needs to be created which takes the name of the stream to subscribe to, the handler, and subscription options.
 
+```go
+sub, _ := conn.Subscribe("subjects", handle, *eda.SubscriptionOptions{
+  Backfill: true,
+  Durable: true,
+  Serial: true,
+})
+defer sub.Close()
 ```
-go run examples/clock/main.go
-[eda] 2017/08/31 14:40:49 tick
-[eda] 2017/08/31 14:40:49 tock
-[eda] 2017/08/31 14:40:50 tick
-[eda] 2017/08/31 14:40:51 tock
-[eda] 2017/08/31 14:40:52 tick
-[eda] 2017/08/31 14:40:53 tock
-[eda] 2017/08/31 14:40:54 tick
-...forever...
-```
+
+In this case, we want to ensure we process events in order even if an error occurs. We want to read the backfill of events in the stream to "catch-up" to the current state, and make the subscription durable so reconnects start where they are left off.
+
+## Learn More
+
+- Check out the [examples directory](./examples) for full examples
+- Learn more about [use cases for persistent logs](https://dev.to/byronruth/use-cases-for-persistent-logs-with-nats-streaming)
 
 ## License
 
