@@ -28,16 +28,7 @@ message Event {
   // Encoded event data.
   bytes data = 7;
 
-  // An aggregate identifier if the event is specific to a defined
-  // aggregate in the domain.
-  Aggregate aggregate = 9;
-
   // Arbitrary metadata as a set of key-value pairs. This can be used
   // for adding upstream user/client info, authorization tokens, etc.
   map<string, string> meta = 10;
-}
-
-message Aggregate {
-  string type = 1;
-  string id = 2;
 }

@@ -16,12 +16,6 @@ var (
 	}
 )
 
-// Aggregate represents the identity of some aggregate in the domain.
-type Aggregate struct {
-	Type string `json:"type"`
-	ID   string `json:"id"`
-}
-
 // Event is the top-level type that wraps the event data.
 type Event struct {
 	// Stream is the stream this event was published on.
@@ -48,9 +42,6 @@ type Event struct {
 	// Cause is the ID of the event that caused/resulted in this event
 	// being produced.
 	Cause string `json:"cause"`
-
-	// Aggregate is the identify of an aggregate this event applies to.
-	Aggregate *Aggregate `json:"aggregate,omitempty"`
 
 	// Meta supports arbitrary key-value information associated with the event.
 	Meta map[string]string `json:"meta,omitempty"`
