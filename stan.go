@@ -77,6 +77,11 @@ func (c *stanConn) Publish(stream string, evt *Event) (string, error) {
 		evt = &Event{}
 	}
 
+	// Add event time if not set.
+	if evt.Time.IsZero() {
+		evt.Time = time.Now()
+	}
+
 	if evt.Data == nil {
 		encoding = "nil"
 	} else {
@@ -94,6 +99,7 @@ func (c *stanConn) Publish(stream string, evt *Event) (string, error) {
 		Id:       id,
 		Type:     evt.Type,
 		Cause:    evt.Cause,
+		Time:     evt.Time.UnixNano(),
 		Client:   c.client,
 		Data:     datab,
 		Encoding: encoding,
@@ -155,15 +161,16 @@ func (c *stanConn) Subscribe(stream string, handle Handler, opts *SubscriptionOp
 		}
 
 		evt := &Event{
-			Stream: msg.Subject,
-			ID:     e.Id,
-			Time:   time.Unix(0, msg.Timestamp),
-			Type:   e.Type,
-			Cause:  e.Cause,
-			Client: e.Client,
-			Data:   &dec,
-			Meta:   e.Meta,
-			msg:    msg,
+			Stream:  msg.Subject,
+			ID:      e.Id,
+			Time:    time.Unix(0, e.Time),
+			AckTime: time.Unix(0, msg.Timestamp),
+			Type:    e.Type,
+			Cause:   e.Cause,
+			Client:  e.Client,
+			Data:    &dec,
+			Meta:    e.Meta,
+			msg:     msg,
 		}
 
 		// Use ack timeout as max context timeout to signal handler components.
