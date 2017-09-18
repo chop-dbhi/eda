@@ -21,6 +21,9 @@ type Event struct {
 	// Time when the event was published.
 	Time time.Time `json:"time"`
 
+	// Time the event was acknowledged by the server.
+	AckTime time.Time `json:"ack_time"`
+
 	// Data is the event data.
 	Data Data `json:"data"`
 

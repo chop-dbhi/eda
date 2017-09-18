@@ -6,8 +6,13 @@ message Event {
   // Unique ID of the event.
 	string id = 1;
 
-  // Timestamp of the event. This is provided by the library.
-	// int64 time = 2;
+  // The time given by the source producer of the event.
+  // This can be manually set in code, otherwise it will be
+  // set by the client producing the event.
+	int64 time = 2;
+
+  // Acknowledged timestamp of the event. This is provided by the backend.
+  // int64 ack_time = 11;
 
   // The event type.
 	string type = 3;
