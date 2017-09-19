@@ -96,14 +96,15 @@ func (c *stanConn) Publish(stream string, evt *Event) (string, error) {
 	id := nuid.Next()
 
 	b, err := proto.Marshal(&pb.Event{
-		Id:       id,
-		Type:     evt.Type,
-		Cause:    evt.Cause,
-		Time:     evt.Time.UnixNano(),
-		Client:   c.client,
-		Data:     datab,
-		Encoding: encoding,
-		Meta:     evt.Meta,
+		Id:        id,
+		Type:      evt.Type,
+		Cause:     evt.Cause,
+		Time:      evt.Time.UnixNano(),
+		Client:    c.client,
+		Data:      datab,
+		Encoding:  encoding,
+		Meta:      evt.Meta,
+		Aggregate: evt.Aggregate,
 	})
 	if err != nil {
 		return "", err
@@ -161,16 +162,17 @@ func (c *stanConn) Subscribe(stream string, handle Handler, opts *SubscriptionOp
 		}
 
 		evt := &Event{
-			Stream:  msg.Subject,
-			ID:      e.Id,
-			Time:    time.Unix(0, e.Time),
-			AckTime: time.Unix(0, msg.Timestamp),
-			Type:    e.Type,
-			Cause:   e.Cause,
-			Client:  e.Client,
-			Data:    &dec,
-			Meta:    e.Meta,
-			msg:     msg,
+			Stream:    msg.Subject,
+			ID:        e.Id,
+			Time:      time.Unix(0, e.Time),
+			AckTime:   time.Unix(0, msg.Timestamp),
+			Type:      e.Type,
+			Cause:     e.Cause,
+			Client:    e.Client,
+			Data:      &dec,
+			Meta:      e.Meta,
+			Aggregate: e.Aggregate,
+			msg:       msg,
 		}
 
 		// Use ack timeout as max context timeout to signal handler components.

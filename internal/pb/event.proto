@@ -36,4 +36,7 @@ message Event {
   // Arbitrary metadata as a set of key-value pairs. This can be used
   // for adding upstream user/client info, authorization tokens, etc.
   map<string, string> meta = 10;
+
+  // Key of the "aggregate" that this event is about.
+  string aggregate = 12;
 }
