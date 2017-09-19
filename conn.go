@@ -37,6 +37,8 @@ type Event struct {
 	// being produced.
 	Cause string `json:"cause"`
 
+	Aggregate string `json:"aggregate"`
+
 	// Meta supports arbitrary key-value information associated with the event.
 	Meta map[string]string `json:"meta,omitempty"`
 
