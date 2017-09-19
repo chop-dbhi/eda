@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/chop-dbhi/eda"
 	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
@@ -58,7 +59,7 @@ func run() error {
 	flag.StringVar(&addr, "addr", "nats://localhost:4222", "NATS address")
 	flag.StringVar(&cluster, "cluster", "test-cluster", "NATS cluster name.")
 	flag.StringVar(&client, "client", "neo4j-causal-graph", "Client connection ID.")
-	flag.StringVar(&stream, "stream", "test", "Stream name.")
+	flag.StringVar(&stream, "stream", "events", "Stream name.")
 	flag.StringVar(&neo4jBolt, "neo4j.bolt", "bolt://localhost:7687", "Neo4j bolt address.")
 
 	flag.Parse()
@@ -81,7 +82,7 @@ func run() error {
 		_, err = neoConn.ExecNeo(createNode, map[string]interface{}{
 			"id":       evt.ID,
 			"type":     evt.Type,
-			"time":     evt.Time,
+			"time":     evt.Time.Format(time.RFC3339Nano),
 			"client":   evt.Client,
 			"encoding": evt.Data.Type(),
 		})
