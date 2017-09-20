@@ -7,7 +7,7 @@ Two producers to separate streams at different rates and a consumer that subscri
 Start the consumer.
 
 ```
-go run consumer.go \
+go run consumer/main.go \
   -addr nats://localhost:4222 \
   -cluster test-cluster \
   -client eda-aggregated-state-consumer \
@@ -18,20 +18,20 @@ go run consumer.go \
 Start the first producer of test events.
 
 ```
-go run producer1.go \
+go run producer-test-events/main.go \
   -addr nats://localhost:4222 \
   -cluster test-cluster \
-  -client eda-aggregated-state-producer1 \
+  -client eda-aggregated-state-producer-test-events \
   -stream test-events \
 ```
 
 Start the second producer of visit events.
 
 ```
-go run producer2.go \
+go run producer-visit-events/main.go \
   -addr nats://localhost:4222 \
   -cluster test-cluster \
-  -client eda-aggregated-state-producer2 \
+  -client eda-aggregated-state-producer-visit-events \
   -stream visit-events \
 ```
 

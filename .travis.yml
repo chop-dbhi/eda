@@ -17,4 +17,4 @@ before_script:
   - sleep 1
 
 script:
-  - go test -v -race .
+  - go test -v -race ./...

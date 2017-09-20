@@ -71,7 +71,7 @@ func run() error {
 
 	flag.StringVar(&addr, "addr", "nats://localhost:4222", "NATS address")
 	flag.StringVar(&cluster, "cluster", "test-cluster", "NATS cluster name.")
-	flag.StringVar(&client, "client", "eda-aggregated-state-producer1", "Client connection ID.")
+	flag.StringVar(&client, "client", "eda-aggregated-state-producer-test-events", "Client connection ID.")
 	flag.StringVar(&stream, "stream", "test-events", "Event stream name.")
 
 	flag.Parse()
