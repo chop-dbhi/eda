@@ -25,6 +25,8 @@ See the [examples directory](./examples).
 
 ## Install
 
+Requires Go 1.9+
+
 ```
 go get -u github.com/chop-dbhi/eda/...
 ```
