@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package pb;
+
+import "google/rpc/status.proto";
+
+message Data {
+  // Encoding name of this data.
+  string encoding = 1;
+
+  // Raw encoded bytes.
+  bytes data = 2;
+
+  // Schema is the name of the schema of the encoded data.
+	string schema = 3;
+}
+
+message Message {
+  // Unique ID of the message.
+	string id = 1;
+
+  // The time given by the sender of the message.
+	int64 time = 2;
+
+  // The message type.
+	string type = 3;
+
+  // Message data for the message type.
+  bytes data = 4;
+
+  // Metadata for the message itself.
+  bytes meta = 5;
+}
+
+message Event {
+  Message msg = 1;
+
+  // An optional event ID that is the cause of this event.
+	repeated string causes = 2;
+
+  // ID of the aggregate this event pertains to.
+  string aggregate = 3;
+}
+
+message Command {
+  Message msg = 1;
+
+  // ID of the aggregate this command applies to.
+  string aggregate = 2;
+}
+
+message Reply {
+  google.rpc.Status status = 1;
+
+  bytes data = 2;
+}

@@ -3,11 +3,95 @@
 [![License MIT](https://img.shields.io/badge/License-MIT-blue.svg)](http://opensource.org/licenses/MIT)
 [![Go Report Card](https://goreportcard.com/badge/github.com/chop-dbhi/eda)](https://goreportcard.com/report/github.com/chop-dbhi/eda) [![Build Status](https://travis-ci.org/chop-dbhi/eda.svg?branch=master)](http://travis-ci.org/chop-dbhi/eda) [![GoDoc](https://godoc.org/github.com/chop-dbhi/eda?status.svg)](http://godoc.org/github.com/chop-dbhi/eda)
 
-eda is a library for implementing event-driven architectures. It provides a thin layer on top of backends that support ordered, durable streams with a publish/subscribe interface. The current implementation uses [NATS Streaming](https://github.com/nats-io/nats-streaming-server) as a backend.
+eda is a library for implementing event-driven architectures. It provides a set of concrete types that are *envelopes* for common messages types, including `Message`, `Command`, `Reply`, and `Event`. In addition a `Data` type is provided which provides an easy way to wrap message data (your domain-specific types) and embed them within the envelopes. All types have built-in support for marshaling and unmarshaling so they can be transmitted over the wire using a transport of your choice.
 
 ## Status
 
 **The library is in an Alpha stage and looking feedback and discussions on API design and scope. Check out the [issues](https://github.com/chop-dbhi/eda/issues) for topics.**
+
+## Install
+
+Requires Go 1.9+
+
+```
+go get -u github.com/chop-dbhi/eda
+```
+
+## Quickstart
+
+Below is a type that represents a domain event an a study recruitment application.
+
+```go
+// ScreeningAppointmentScheduled denotes a new appointment has been created
+// for screening a subject for recruitment.
+type ScreeningAppointmentScheduled struct {
+  // ID of the subject
+  SubjectId string
+  // Phone number of the subject.
+  SubjectPhone string
+  // ID of the study recruiter who will conduct the screening.
+  RecruiterId string
+  // Scheduled time for the appointment.
+  Time time.Time
+  // Location of the appointment.
+  Location string
+}
+```
+
+This event only contains information relevant to the domain and not boilerplate event metadata such as the time, unique ID, etc. This is handled by the `eda.Event` type that wraps the domain event treating it as the event data.
+
+```go
+e := eda.Event{
+  Type: "ScreeningAppointmentScheduled",
+  Data: eda.JSON(&ScreeningAppointmentScheduled{
+    SubjectId: "s-3932832",
+    SubjectPhone: "555-102-1039",
+    RecruiterId: "r-9430439",
+    Time: time.Date(2018, 1, 23, 14, 0, 0, 0, time.Local),
+    Location: "Research Building",
+  }),
+}
+```
+
+The use of `eda.JSON` will convert the domain event into a `eda.Data` type with a JSON encoding. Additional built-in codecs including `eda.Proto`, `eda.String`, and `eda.Bytes`.
+
+When the event is marshalled to bytes, the event will be internally marshalled to JSON. A call to `Marshal` will automatically generate a unique ID and set the current time on the event. These values can be set ahead of time if more control is needed.
+
+```go
+// Marshal to bytes.
+b, err := e.Marshal()
+```
+
+Internally marshalling is done with a Protocol Buffer message type. This is for efficiency, but also allows for cross-language support.
+
+At this point the bytes can be sent over the wire using a built-in [transport](#transports) or one of your choice. To manually unmarshal, simply do the following:
+
+```go
+var e eda.Event
+err := e.Unmarshal(b)
+```
+
+The various properties of the event can be accessed such as `Type`, `Time`, `ID`, etc. To access the original domain event simply initialize a value of the corresponding type and decode it from the `Data` field.
+
+```go
+var de ScreeningAppointmentScheduled
+err := e.Data.Decode(&de)
+```
+
+This will decode the original domain event into the new value. In practice, a common pattern is to switch on the `Type` field to select which concrete type to decode.
+
+```go
+// Common pattern to matching the correct type.
+switch e.Type {
+case "ScreeningAppointmentScheduled":
+  var de ScreeningAppointmentScheduled
+  err := e.Data.Decode(&de)
+
+// handle other types..
+}
+```
+
+For more information on the additional fields, check out the [docs](https://godoc.org/github.com/chop-dbhi/eda).
 
 ## Use Case
 
@@ -18,115 +102,6 @@ One application of this is as a building block for systems using CQRS pattern wh
 Another related use case is Event Sourcing which are generally spoken of in the context of an "aggregate". The pattern requires each aggregate instance to maintain it's own stream of events acting as an internal changelog. This stream is generally "private" from other consumers and requires having a single handler to apply events in order to maintain a consistent internal state.
 
 This library could be used for this, but the backends do not currently generalize well to 10's or 100's of thousands of streams. One strategy is "multi-plex" events from multiple aggregates on a single stream and have handlers that ignore events that are specific to the target aggregate. The basic trade-off are the number of streams (which may be limited by the backend) and the latency of reading events on a multi-plexed stream.
-
-## Examples
-
-See the [examples directory](./examples).
-
-## Install
-
-Requires Go 1.9+
-
-```
-go get -u github.com/chop-dbhi/eda/...
-```
-
-## Backend
-
-This library relies on NATS Streaming as a backend. There are ways of running the server:
-
-- Download a [release binary](https://github.com/nats-io/nats-streaming-server/releases), unzip, and run it.
-- Follow the [official quickstart guide](https://nats.io/documentation/streaming/nats-streaming-quickstart/)
-- Run the official [Docker container](https://hub.docker.com/_/nats-streaming/)
-
-In any case, the suggested command line options for full durability:
-
-```
-$ nats-streaming-server \
-  --cluster_id test-cluster \
-  --store file \
-  --dir data \
-  --max_channels 0 \
-  --max_subs 0 \
-  --max_msgs 0 \
-  --max_bytes 0 \
-  --max_age 0s \
-```
-
-## Get Started
-
-### Connecting to the backend
-
-The first step is to establish a connection to the NATS Streaming server. Below uses the default address and cluster ID. `Connect` also takes a client ID which identifies the connection itself. Be thoughtful of the client ID since it will be used as part of the key for tracking progress in streams for subscribers. It is also added to events published by this connection for traceability.
-
-```go
-// Establish a connection to NATS specifiying the server address, the cluster
-// ID , and a client ID for this connection.
-conn, _ := eda.Connect(
-  "nats://localhost:4222",
-  "test-cluster",
-  "test-client",
-)
-
-// Close on exit.
-defer conn.Close()
-```
-
-### Publishing events
-
-To publish an event, simply use the `Publish` method passing an `Event` value.
-
-```go
-id, _ := conn.Publish("subjects", &eda.Event{
-  Type: "subject-enrolled",
-  Data: eda.JSON(&Subject{
-    ID: "3292329",
-  }),
-})
-```
-
-By convention, `Type` should be past tense since it is describing something that already happened. The event `Data` should provide sufficient information on the event for consumers. There are helper functions to encode bytes, strings, JSON, and Protocol Buffer types.
-
-A couple additional fields can be supplied including `Cause` which is an identifier of the upstream event (or something else) that caused this event and `Meta` which is a map of arbitrary key-value pairs for additional information.
-
-Returned is the unique ID of the event and an error if publishing to the server failed.
-
-### Consuming events
-
-The first thing to do is create a `Handler` function that will be used to *handle* events as they are received from the server. You can see the signature of the handler below which includes a `context.Context` value and the received event.
-
-```go
-handle := func(ctx context.Context, evt *eda.Event) error {
-  switch evt.Type {
-  case "subject-enrolled":
-    var s Subject
-    if err := evt.Data.Decode(&s); err != nil {
-      return err
-    }
-
-    // Do something with subject.
-  }
-
-  return nil
-}
-```
-
-To start receiving events, a subscription needs to be created which takes the name of the stream to subscribe to, the handler, and subscription options.
-
-```go
-sub, _ := conn.Subscribe("subjects", handle, *eda.SubscriptionOptions{
-  Backfill: true,
-  Durable: true,
-  Serial: true,
-})
-defer sub.Close()
-```
-
-In this case, we want to ensure we process events in order even if an error occurs. We want to read the backfill of events in the stream to "catch-up" to the current state, and make the subscription durable so reconnects start where they are left off.
-
-## Learn More
-
-- Read about [use cases for persistent logs](https://dev.to/byronruth/use-cases-for-persistent-logs-with-nats-streaming)
 
 ## License
 
