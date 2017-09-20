@@ -21,6 +21,11 @@ func handle(ctx context.Context, evt *eda.Event) error {
 		evt.Data.Decode(&m)
 		data = m
 
+	case "string":
+		var s string
+		evt.Data.Decode(&s)
+		data = s
+
 		// show format, but no bytes.
 	default:
 		data = fmt.Sprintf("<< %s >>", evt.Data.Type())
