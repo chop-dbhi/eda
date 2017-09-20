@@ -11,8 +11,9 @@ message Event {
   // set by the client producing the event.
 	int64 time = 2;
 
-  // Acknowledged timestamp of the event. This is provided by the backend.
-  // int64 ack_time = 11;
+  // Acknowledged timestamp of the event. This is provided by the backend,
+  // but a field is here if the event is republished as-is.
+  int64 ack_time = 11;
 
   // The event type.
 	string type = 3;

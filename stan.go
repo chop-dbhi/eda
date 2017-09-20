@@ -165,7 +165,6 @@ func (c *stanConn) Subscribe(stream string, handle Handler, opts *SubscriptionOp
 			Stream:    msg.Subject,
 			ID:        e.Id,
 			Time:      time.Unix(0, e.Time),
-			AckTime:   time.Unix(0, msg.Timestamp),
 			Type:      e.Type,
 			Cause:     e.Cause,
 			Client:    e.Client,
@@ -173,6 +172,13 @@ func (c *stanConn) Subscribe(stream string, handle Handler, opts *SubscriptionOp
 			Meta:      e.Meta,
 			Aggregate: e.Aggregate,
 			msg:       msg,
+		}
+
+		// Use stored ack time if set.
+		if e.AckTime > 0 {
+			evt.AckTime = time.Unix(0, e.AckTime)
+		} else {
+			evt.AckTime = time.Unix(0, msg.Timestamp)
 		}
 
 		// Use ack timeout as max context timeout to signal handler components.
