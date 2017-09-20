@@ -58,9 +58,9 @@ func run() error {
 
 	flag.StringVar(&addr, "addr", "nats://localhost:4222", "NATS address")
 	flag.StringVar(&cluster, "cluster", "test-cluster", "NATS cluster name.")
-	flag.StringVar(&client, "client", "neo4j-causal-graph", "Client connection ID.")
+	flag.StringVar(&client, "client", "eda-neo4j-causal-graph", "Client connection ID.")
 	flag.StringVar(&stream, "stream", "events", "Stream name.")
-	flag.StringVar(&neo4jBolt, "neo4j.bolt", "bolt://localhost:7687", "Neo4j bolt address.")
+	flag.StringVar(&neo4jBolt, "neo4j", "bolt://localhost:7687", "Neo4j bolt address.")
 
 	flag.Parse()
 
