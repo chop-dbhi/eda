@@ -19,6 +19,10 @@ Another related use case is Event Sourcing which are generally spoken of in the 
 
 This library could be used for this, but the backends do not currently generalize well to 10's or 100's of thousands of streams. One strategy is "multi-plex" events from multiple aggregates on a single stream and have handlers that ignore events that are specific to the target aggregate. The basic trade-off are the number of streams (which may be limited by the backend) and the latency of reading events on a multi-plexed stream.
 
+## Examples
+
+See the [examples directory](./examples).
+
 ## Install
 
 ```
@@ -120,8 +124,7 @@ In this case, we want to ensure we process events in order even if an error occu
 
 ## Learn More
 
-- Check out the [examples directory](./examples) for full examples
-- Learn more about [use cases for persistent logs](https://dev.to/byronruth/use-cases-for-persistent-logs-with-nats-streaming)
+- Read about [use cases for persistent logs](https://dev.to/byronruth/use-cases-for-persistent-logs-with-nats-streaming)
 
 ## License
 
