@@ -2,10 +2,9 @@ package eda
 
 import (
 	"encoding"
+	"encoding/json"
 	"errors"
 	"time"
-
-	"google.golang.org/grpc/status"
 
 	"github.com/chop-dbhi/eda/codec"
 	"github.com/chop-dbhi/eda/internal/pb"
@@ -14,80 +13,138 @@ import (
 )
 
 var (
-	// GenId is the ID generator for messages. This can be overridden to
-	// use a different ID generation method.
-	GenId IdGen = GenNatsId
-
-	valueUnset = struct{}{}
+	// NewID returns a new unique ID used for the messages.
+	NewID IDGen = GenNatsID
 )
 
-// GenNatsId generates a new ID using the NATS nuid library.
-func GenNatsId() string {
+// GenNatsID generates a new ID using the NATS nuid library.
+func GenNatsID() string {
 	return nuid.Next()
 }
 
-// IdGen is a type for generating unique message IDs.
-type IdGen func() string
+// IDGen is a type for generating unique message IDs.
+type IDGen func() string
 
 // Message represents a general message type.
 type Message struct {
 	// ID is the unique ID of the message.
-	ID string `json:"id"`
+	ID string
 
 	// Type is the message type.
-	Type string `json:"type"`
+	Type string
 
-	// Time when the meessage was sent by the client.
-	Time time.Time `json:"time"`
+	// Time when the message was sent by the client.
+	Time time.Time
 
 	// Data is the encoded message data.
-	Data *Data `json:"data,omitempty"`
+	Data *Data
 
 	// Meta is encoded meta data for the message.
-	Meta *Data `json:"meta,omitempty"`
+	Meta *Data
+
+	// Correlation is an identifier that correlates related messages.
+	// This is often used for *sagas* or general tracing.
+	CorrelationID string
+
+	// Causal is the ID of a message that cause this message to be sent.
+	// This is used in the context of events and commands.
+	CausalID string
+
+	// Topic is the topic the message was published to. Transport
+	// implementations can set this value for consumers.
+	Topic string
+
+	// Time the message was acknowledged by the transport. Transport
+	// implementations that support ACKs can set this value for consumers.
+	AckTime time.Time
 }
 
-// Marshal marshals the message into an internal proto bytes.
-// If not set, the message ID and current time is set.
-func (m *Message) Marshal() ([]byte, error) {
-	var (
-		err        error
-		data, meta []byte
-	)
-
-	// Marshal the data and meta fields into the internal proto bytes.
-	if m.Data != nil {
-		if data, err = m.Data.Marshal(); err != nil {
-			return nil, err
-		}
-	}
-
-	if m.Meta != nil {
-		if meta, err = m.Meta.Marshal(); err != nil {
-			return nil, err
-		}
-	}
-
+func (m *Message) setDefaults() {
 	// Generate and set the ID if not set.
 	if m.ID == "" {
-		m.ID = GenId()
+		m.ID = NewID()
 	}
 
 	// Set the event time if not set.
 	if m.Time.IsZero() {
 		m.Time = time.Now()
 	}
-
-	return proto.Marshal(&pb.Message{
-		Id:   m.ID,
-		Type: m.Type,
-		Time: m.Time.UnixNano(),
-		Data: data,
-		Meta: meta,
-	})
 }
 
-// Unmarshals the proto bytes into this type.
+// MarshalJSON marshals the message into JSON. This can be used as
+// a human-readable alternative for debugging and other read-only
+// use cases. Sets the message ID and time if not set.
+func (m *Message) MarshalJSON() ([]byte, error) {
+	m.setDefaults()
+
+	x := map[string]interface{}{
+		"id":   m.ID,
+		"type": m.Type,
+		"time": m.Time.UTC(),
+	}
+
+	if m.CorrelationID != "" {
+		x["correlation_id"] = m.CorrelationID
+	}
+
+	if m.CausalID != "" {
+		x["causal_id"] = m.CausalID
+	}
+
+	if m.Topic != "" {
+		x["topic"] = m.Topic
+	}
+
+	if !m.AckTime.IsZero() {
+		x["ack_time"] = m.AckTime.UTC()
+	}
+
+	// Marshal the data and meta fields into the internal proto bytes.
+	if m.Data != nil {
+		x["data"] = m.Data
+	}
+
+	if m.Meta != nil {
+		x["meta"] = m.Meta
+	}
+
+	return json.Marshal(x)
+}
+
+// Marshal marshals the message into proto bytes.
+// Sets the message ID and time if not set.
+func (m *Message) Marshal() ([]byte, error) {
+	m.setDefaults()
+
+	x := &pb.Message{
+		Id:            m.ID,
+		Type:          m.Type,
+		Time:          m.Time.UnixNano(),
+		CorrelationId: m.CorrelationID,
+		CausalId:      m.CausalID,
+	}
+
+	// Marshal the data and meta fields into the internal proto bytes.
+	if m.Data != nil {
+		b, err := m.Data.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		x.Data = b
+	}
+
+	if m.Meta != nil {
+		b, err := m.Meta.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		x.Meta = b
+	}
+
+	return proto.Marshal(x)
+}
+
+// Unmarshal unmarshals the proto bytes into the message.
 func (m *Message) Unmarshal(b []byte) error {
 	var x pb.Message
 
@@ -96,124 +153,94 @@ func (m *Message) Unmarshal(b []byte) error {
 		return err
 	}
 
-	var data, meta Data
-	if err := data.Unmarshal(x.Data); err != nil {
-		return err
+	if x.Data != nil {
+		var data Data
+		if err := data.Unmarshal(x.Data); err != nil {
+			return err
+		}
+		m.Data = &data
 	}
 
-	if err := meta.Unmarshal(x.Meta); err != nil {
-		return err
+	if x.Meta != nil {
+		var meta Data
+		if err := meta.Unmarshal(x.Meta); err != nil {
+			return err
+		}
+		m.Meta = &meta
 	}
 
 	m.ID = x.Id
 	m.Time = time.Unix(0, x.Time)
 	m.Type = x.Type
-	m.Data = &data
-	m.Meta = &meta
+	m.CorrelationID = x.CorrelationId
+	m.CausalID = x.CausalId
 
 	return nil
-}
-
-// Command corresponds to a command sent to a command handler.
-type Command struct {
-	// ID is the unique ID of the command.
-	ID string `json:"id"`
-
-	// Type is the command type.
-	Type string `json:"type"`
-
-	// Time when the command was sent by the client.
-	Time time.Time `json:"time"`
-
-	// Aggregate is the ID of the aggregate this command applies to.
-	Aggregate string `json:"aggregate"`
-
-	// Data is the encoded command data.
-	Data *Data `json:"data,omitempty"`
-
-	// Meta is encoded meta data for the command.
-	Meta *Data `json:"meta,omitempty"`
-}
-
-// PrepareCommand implements the CommandModel interface.
-func (c *Command) PrepareCommand() *Command {
-	return c
-}
-
-func (c *Command) Unmarshal(b []byte) error {
-	var x pb.Command
-	// Message sent on stream that is not a protobuf format.
-	if err := proto.Unmarshal(b, &x); err != nil {
-		return err
-	}
-
-	var data, meta Data
-	if err := data.Unmarshal(x.Msg.Data); err != nil {
-		return err
-	}
-
-	if err := meta.Unmarshal(x.Msg.Meta); err != nil {
-		return err
-	}
-
-	c.ID = x.Msg.Id
-	c.Aggregate = x.Aggregate
-	c.Time = time.Unix(0, x.Msg.Time)
-	c.Type = x.Msg.Type
-	c.Data = &data
-	c.Meta = &meta
-
-	return nil
-}
-
-func (c *Command) Marshal() ([]byte, error) {
-	var (
-		err        error
-		data, meta []byte
-	)
-
-	if c.Data != nil {
-		if data, err = c.Data.Marshal(); err != nil {
-			return nil, err
-		}
-	}
-
-	if c.Meta != nil {
-		if meta, err = c.Meta.Marshal(); err != nil {
-			return nil, err
-		}
-	}
-
-	if c.ID == "" {
-		c.ID = GenId()
-	}
-
-	// Add command time if not set.
-	if c.Time.IsZero() {
-		c.Time = time.Now()
-	}
-
-	return proto.Marshal(&pb.Command{
-		Aggregate: c.Aggregate,
-		Msg: &pb.Message{
-			Id:   c.ID,
-			Type: c.Type,
-			Time: c.Time.UnixNano(),
-			Data: data,
-			Meta: meta,
-		},
-	})
 }
 
 // Reply corresponds to a reply to a command.
 type Reply struct {
-	// Status is the status code and message of the reply.
-	Status *status.Status `json:"status"`
+	// Status code of the reply.
+	Code Code
 
-	// Reply data.
-	Data *Data `json:"data,omitempty"`
+	// Status message of the reply.
+	Message string
+
+	// Domain-specific data included in the reply.
+	Data *Data
+
+	// Domain-specific metadata in the reply.
+	Meta *Data
 }
 
+// MarshalJSON marshals the reply to JSON bytes.
+func (r *Reply) MarshalJSON() ([]byte, error) {
+	x := map[string]interface{}{
+		"code": r.Code,
+	}
+
+	if r.Message != "" {
+		x["message"] = r.Message
+	}
+
+	if r.Data != nil {
+		x["data"] = r.Data
+	}
+
+	if r.Meta != nil {
+		x["meta"] = r.Meta
+	}
+
+	return json.Marshal(x)
+}
+
+// Marshal marshals the reply to proto bytes.
+func (r *Reply) Marshal() ([]byte, error) {
+	x := &pb.Reply{
+		Code: int32(r.Code),
+		Msg:  r.Message,
+	}
+
+	if r.Data != nil {
+		b, err := r.Data.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		x.Data = b
+	}
+
+	if r.Meta != nil {
+		b, err := r.Meta.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		x.Meta = b
+	}
+
+	return proto.Marshal(x)
+}
+
+// Unmarshal unmarshal proto bytes into the reply.
 func (r *Reply) Unmarshal(b []byte) error {
 	var x pb.Reply
 	// Message sent on stream that is not a protobuf format.
@@ -226,125 +253,11 @@ func (r *Reply) Unmarshal(b []byte) error {
 		return err
 	}
 
-	r.Status = x.Status
+	r.Code = Code(x.Code)
+	r.Message = x.Msg
 	r.Data = &data
 
 	return nil
-}
-
-func (r *Reply) Marshal() ([]byte, error) {
-	var (
-		err  error
-		data []byte
-	)
-
-	if r.Data != nil {
-		if data, err = r.Data.Marshal(); err != nil {
-			return nil, err
-		}
-	}
-
-	return proto.Marshal(&pb.Reply{
-		Status: r.Status,
-		Data:   data,
-	})
-}
-
-// Event is a type for encoding and decoding an event.
-type Event struct {
-	// ID is the unique ID of the event.
-	ID string `json:"id"`
-
-	// Topic is the topic the event was published on.
-	Topic string `json:"topic"`
-
-	// Type is the event type.
-	Type string `json:"type"`
-
-	// Time when the event was published by the client.
-	Time time.Time `json:"time"`
-
-	// Time the event was acknowledged by the server.
-	AckTime time.Time `json:"ack_time"`
-
-	// Aggregate is the ID of the aggregate this event pertains to.
-	Aggregate string `json:"aggregate"`
-
-	// Causes are the set of IDs that caused this event.
-	Causes []string `json:"causes,omitempty"`
-
-	// Data is the encoded event data.
-	Data *Data `json:"data,omitempty"`
-
-	// Meta is arbitrary meta data for the event itself.
-	Meta *Data `json:"meta,omitempty"`
-}
-
-func (e *Event) Unmarshal(b []byte) error {
-	var x pb.Event
-	// Message sent on stream that is not a protobuf format.
-	if err := proto.Unmarshal(b, &x); err != nil {
-		return err
-	}
-
-	var data, meta Data
-	if err := data.Unmarshal(x.Msg.Data); err != nil {
-		return err
-	}
-
-	if err := meta.Unmarshal(x.Msg.Meta); err != nil {
-		return err
-	}
-
-	e.ID = x.Msg.Id
-	e.Time = time.Unix(0, x.Msg.Time)
-	e.Type = x.Msg.Type
-	e.Causes = x.Causes
-	e.Aggregate = x.Aggregate
-	e.Data = &data
-	e.Meta = &meta
-
-	return nil
-}
-
-func (e *Event) Marshal() ([]byte, error) {
-	var (
-		err        error
-		data, meta []byte
-	)
-
-	if e.Data != nil {
-		if data, err = e.Data.Marshal(); err != nil {
-			return nil, err
-		}
-	}
-
-	if e.Meta != nil {
-		if meta, err = e.Meta.Marshal(); err != nil {
-			return nil, err
-		}
-	}
-
-	if e.ID == "" {
-		e.ID = GenId()
-	}
-
-	// Add event time if not set.
-	if e.Time.IsZero() {
-		e.Time = time.Now()
-	}
-
-	return proto.Marshal(&pb.Event{
-		Causes:    e.Causes,
-		Aggregate: e.Aggregate,
-		Msg: &pb.Message{
-			Id:   e.ID,
-			Type: e.Type,
-			Time: e.Time.UnixNano(),
-			Data: data,
-			Meta: meta,
-		},
-	})
 }
 
 // Data encapsulates a value with a known encoding scheme.
@@ -363,12 +276,47 @@ type Data struct {
 	bytes []byte
 }
 
+// Set sets a new value and clears any internally cache bytes.
 func (d *Data) Set(v interface{}) {
 	d.value = v
 	d.bytes = nil
 }
 
-// Marshal marshals the data into an internal encoded data structure.
+// MarshalJSON marshals the data to JSON bytes.
+func (d *Data) MarshalJSON() ([]byte, error) {
+	x := map[string]interface{}{
+		"encoding": d.Encoding,
+	}
+
+	if d.Schema != "" {
+		x["schema"] = d.Schema
+	}
+
+	// Use value if set, otherwise attempt to convert bytes to JSON.
+	if d.value != nil {
+		x["value"] = d.value
+	} else if d.bytes != nil {
+		switch d.Encoding {
+		case "json":
+			x["value"] = json.RawMessage(d.bytes)
+
+		case "string":
+			var s string
+			if err := d.Decode(&s); err != nil {
+				return nil, err
+			}
+
+			x["value"] = s
+
+		default:
+			x["value"] = d.bytes
+		}
+	}
+
+	return json.Marshal(x)
+}
+
+// Marshal marshals the data into proto bytes.
 func (d *Data) Marshal() ([]byte, error) {
 	// No content to the data.
 	if d.value == nil && d.bytes == nil {
@@ -405,6 +353,7 @@ func (d *Data) Marshal() ([]byte, error) {
 	return proto.Marshal(x)
 }
 
+// Unmarshal unmarshals proto bytes into the value.
 func (d *Data) Unmarshal(b []byte) error {
 	var x pb.Data
 	if err := proto.Unmarshal(b, &x); err != nil {

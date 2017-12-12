@@ -9,18 +9,15 @@ It is generated from these files:
 	types.proto
 
 It has these top-level messages:
-	Data
 	Message
-	Event
-	Command
 	Reply
+	Data
 */
 package pb
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_rpc "google.golang.org/grpc/status"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -33,58 +30,35 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type Data struct {
-	// Encoding name of this data.
-	Encoding string `protobuf:"bytes,1,opt,name=encoding" json:"encoding,omitempty"`
-	// Raw encoded bytes.
-	Data []byte `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	// Schema is the name of the schema of the encoded data.
-	Schema string `protobuf:"bytes,3,opt,name=schema" json:"schema,omitempty"`
-}
-
-func (m *Data) Reset()                    { *m = Data{} }
-func (m *Data) String() string            { return proto.CompactTextString(m) }
-func (*Data) ProtoMessage()               {}
-func (*Data) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
-
-func (m *Data) GetEncoding() string {
-	if m != nil {
-		return m.Encoding
-	}
-	return ""
-}
-
-func (m *Data) GetData() []byte {
-	if m != nil {
-		return m.Data
-	}
-	return nil
-}
-
-func (m *Data) GetSchema() string {
-	if m != nil {
-		return m.Schema
-	}
-	return ""
-}
-
+// Message is a concrete representation of a type for message-driven
+// use cases in a CQRS and Event Sourcing context. This model is intended
+// to sufficiently describe the most common metadata required for
+// specialized uses including events, commands, and queries.
 type Message struct {
 	// Unique ID of the message.
 	Id string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	// The time given by the sender of the message.
+	// Time in nanoseconds the message was sent by the client.
 	Time int64 `protobuf:"varint,2,opt,name=time" json:"time,omitempty"`
-	// The message type.
+	// String indicating the type of message.
 	Type string `protobuf:"bytes,3,opt,name=type" json:"type,omitempty"`
-	// Message data for the message type.
+	// Encoded domain-specific data in the message. This is a marshalled
+	// instance of Data which contains the underlying domain data.
 	Data []byte `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`
-	// Metadata for the message itself.
+	// Encoded domain-specific metadata in the message. This is a marshalled
+	// instance of Data which contains the underlying domain metadata.
 	Meta []byte `protobuf:"bytes,5,opt,name=meta,proto3" json:"meta,omitempty"`
+	// Correlation ID used to correlate related messages. This is particually
+	// applicable when implementing a saga.
+	CorrelationId string `protobuf:"bytes,6,opt,name=correlation_id,json=correlationId" json:"correlation_id,omitempty"`
+	// Causal ID is the ID of a message that caused this message
+	// to be sent if any.
+	CausalId string `protobuf:"bytes,7,opt,name=causal_id,json=causalId" json:"causal_id,omitempty"`
 }
 
 func (m *Message) Reset()                    { *m = Message{} }
 func (m *Message) String() string            { return proto.CompactTextString(m) }
 func (*Message) ProtoMessage()               {}
-func (*Message) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (*Message) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 func (m *Message) GetId() string {
 	if m != nil {
@@ -121,80 +95,52 @@ func (m *Message) GetMeta() []byte {
 	return nil
 }
 
-type Event struct {
-	Msg *Message `protobuf:"bytes,1,opt,name=msg" json:"msg,omitempty"`
-	// An optional event ID that is the cause of this event.
-	Causes []string `protobuf:"bytes,2,rep,name=causes" json:"causes,omitempty"`
-	// ID of the aggregate this event pertains to.
-	Aggregate string `protobuf:"bytes,3,opt,name=aggregate" json:"aggregate,omitempty"`
-}
-
-func (m *Event) Reset()                    { *m = Event{} }
-func (m *Event) String() string            { return proto.CompactTextString(m) }
-func (*Event) ProtoMessage()               {}
-func (*Event) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
-
-func (m *Event) GetMsg() *Message {
+func (m *Message) GetCorrelationId() string {
 	if m != nil {
-		return m.Msg
-	}
-	return nil
-}
-
-func (m *Event) GetCauses() []string {
-	if m != nil {
-		return m.Causes
-	}
-	return nil
-}
-
-func (m *Event) GetAggregate() string {
-	if m != nil {
-		return m.Aggregate
+		return m.CorrelationId
 	}
 	return ""
 }
 
-type Command struct {
-	Msg *Message `protobuf:"bytes,1,opt,name=msg" json:"msg,omitempty"`
-	// ID of the aggregate this command applies to.
-	Aggregate string `protobuf:"bytes,2,opt,name=aggregate" json:"aggregate,omitempty"`
-}
-
-func (m *Command) Reset()                    { *m = Command{} }
-func (m *Command) String() string            { return proto.CompactTextString(m) }
-func (*Command) ProtoMessage()               {}
-func (*Command) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
-
-func (m *Command) GetMsg() *Message {
+func (m *Message) GetCausalId() string {
 	if m != nil {
-		return m.Msg
-	}
-	return nil
-}
-
-func (m *Command) GetAggregate() string {
-	if m != nil {
-		return m.Aggregate
+		return m.CausalId
 	}
 	return ""
 }
 
+// Reply is a concrete representation of a reply type that are commonly
+// sent back by command and query handlers.
 type Reply struct {
-	Status *google_rpc.Status `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
-	Data   []byte             `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	// Code that indicates the status of the reply.
+	Code int32 `protobuf:"varint,1,opt,name=code" json:"code,omitempty"`
+	// Text-based message describing the status with respect to the code.
+	Msg string `protobuf:"bytes,2,opt,name=msg" json:"msg,omitempty"`
+	// Encoded domain-specific data in the reply. This is a marshalled
+	// instance of Data which contains the underlying domain data.
+	Data []byte `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	// Encoded domain-specific metadata in the reply. This is a marshalled
+	// instance of Data which contains the underlying domain metadata.
+	Meta []byte `protobuf:"bytes,4,opt,name=meta,proto3" json:"meta,omitempty"`
 }
 
 func (m *Reply) Reset()                    { *m = Reply{} }
 func (m *Reply) String() string            { return proto.CompactTextString(m) }
 func (*Reply) ProtoMessage()               {}
-func (*Reply) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+func (*Reply) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
-func (m *Reply) GetStatus() *google_rpc.Status {
+func (m *Reply) GetCode() int32 {
 	if m != nil {
-		return m.Status
+		return m.Code
 	}
-	return nil
+	return 0
+}
+
+func (m *Reply) GetMsg() string {
+	if m != nil {
+		return m.Msg
+	}
+	return ""
 }
 
 func (m *Reply) GetData() []byte {
@@ -204,34 +150,74 @@ func (m *Reply) GetData() []byte {
 	return nil
 }
 
+func (m *Reply) GetMeta() []byte {
+	if m != nil {
+		return m.Meta
+	}
+	return nil
+}
+
+type Data struct {
+	// Encoding name of this data.
+	Encoding string `protobuf:"bytes,1,opt,name=encoding" json:"encoding,omitempty"`
+	// Raw encoded bytes using the specified encoding.
+	Data []byte `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	// Domain-specific name of the schema of the encoded data. The
+	// use case is to enable switching on the schema prior to
+	// decoding the data into a native type.
+	Schema string `protobuf:"bytes,3,opt,name=schema" json:"schema,omitempty"`
+}
+
+func (m *Data) Reset()                    { *m = Data{} }
+func (m *Data) String() string            { return proto.CompactTextString(m) }
+func (*Data) ProtoMessage()               {}
+func (*Data) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+
+func (m *Data) GetEncoding() string {
+	if m != nil {
+		return m.Encoding
+	}
+	return ""
+}
+
+func (m *Data) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+func (m *Data) GetSchema() string {
+	if m != nil {
+		return m.Schema
+	}
+	return ""
+}
+
 func init() {
-	proto.RegisterType((*Data)(nil), "pb.Data")
 	proto.RegisterType((*Message)(nil), "pb.Message")
-	proto.RegisterType((*Event)(nil), "pb.Event")
-	proto.RegisterType((*Command)(nil), "pb.Command")
 	proto.RegisterType((*Reply)(nil), "pb.Reply")
+	proto.RegisterType((*Data)(nil), "pb.Data")
 }
 
 func init() { proto.RegisterFile("types.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 285 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x91, 0x4d, 0x4b, 0xfc, 0x30,
-	0x10, 0xc6, 0xd9, 0xb4, 0xdb, 0xfd, 0xef, 0xf4, 0x8f, 0x87, 0x1c, 0xb4, 0x2c, 0x0a, 0xa5, 0xa7,
-	0xc5, 0x43, 0x16, 0xf4, 0x23, 0xf8, 0x76, 0xd2, 0x43, 0xbc, 0x7a, 0x99, 0xb6, 0x43, 0x2c, 0x6c,
-	0x9a, 0xd0, 0x64, 0x85, 0x7e, 0x7b, 0x69, 0x1a, 0xd7, 0x17, 0x04, 0x6f, 0xcf, 0x3c, 0x33, 0xfc,
-	0xe6, 0x61, 0x06, 0x72, 0x3f, 0x5a, 0x72, 0xc2, 0x0e, 0xc6, 0x1b, 0xce, 0x6c, 0xbd, 0x39, 0x53,
-	0xc6, 0xa8, 0x3d, 0xed, 0x06, 0xdb, 0xec, 0x9c, 0x47, 0x7f, 0x88, 0xcd, 0xea, 0x09, 0xd2, 0x5b,
-	0xf4, 0xc8, 0x37, 0xf0, 0x8f, 0xfa, 0xc6, 0xb4, 0x5d, 0xaf, 0x8a, 0x45, 0xb9, 0xd8, 0xae, 0xe5,
-	0xb1, 0xe6, 0x1c, 0xd2, 0x16, 0x3d, 0x16, 0xac, 0x5c, 0x6c, 0xff, 0xcb, 0xa0, 0xf9, 0x29, 0x64,
-	0xae, 0x79, 0x25, 0x8d, 0x45, 0x12, 0xa6, 0x63, 0x55, 0x75, 0xb0, 0x7a, 0x24, 0xe7, 0x50, 0x11,
-	0x3f, 0x01, 0xd6, 0xb5, 0x11, 0xc6, 0xba, 0x76, 0xc2, 0xf8, 0x4e, 0x53, 0xc0, 0x24, 0x32, 0xe8,
-	0xe0, 0x8d, 0x96, 0x22, 0x24, 0xe8, 0xe3, 0xba, 0xf4, 0xcb, 0x3a, 0x0e, 0xa9, 0x26, 0x8f, 0xc5,
-	0x72, 0xf6, 0x26, 0x5d, 0xbd, 0xc0, 0xf2, 0xee, 0x8d, 0x7a, 0xcf, 0x2f, 0x20, 0xd1, 0x6e, 0x8e,
-	0x9d, 0x5f, 0xe5, 0xc2, 0xd6, 0x22, 0x46, 0x90, 0x93, 0x3f, 0x45, 0x6d, 0xf0, 0xe0, 0xc8, 0x15,
-	0xac, 0x4c, 0xa6, 0xa8, 0x73, 0xc5, 0xcf, 0x61, 0x8d, 0x4a, 0x0d, 0xa4, 0xd0, 0x7f, 0x04, 0xf8,
-	0x34, 0xaa, 0x7b, 0x58, 0xdd, 0x18, 0xad, 0xb1, 0x6f, 0xff, 0xe2, 0x7f, 0xe3, 0xb0, 0x9f, 0x9c,
-	0x07, 0x58, 0x4a, 0xb2, 0xfb, 0x91, 0x5f, 0x42, 0x36, 0x5f, 0x3e, 0x82, 0xb8, 0x98, 0x7f, 0x22,
-	0x06, 0xdb, 0x88, 0xe7, 0xd0, 0x91, 0x71, 0xe2, 0xb7, 0x8b, 0xd7, 0x59, 0x78, 0xd8, 0xf5, 0x7b,
-	0x00, 0x00, 0x00, 0xff, 0xff, 0x2c, 0x4c, 0x2e, 0xf4, 0xdc, 0x01, 0x00, 0x00,
+	// 247 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x90, 0xcf, 0x4a, 0xc4, 0x30,
+	0x10, 0xc6, 0x69, 0xfa, 0x67, 0xb7, 0xa3, 0x2e, 0x92, 0x83, 0x04, 0xbd, 0x94, 0x82, 0xd0, 0x93,
+	0x17, 0x5f, 0xc1, 0xcb, 0x1e, 0xf4, 0x10, 0xf0, 0x2c, 0xd9, 0x64, 0xa8, 0x81, 0xb6, 0x09, 0x4d,
+	0x3c, 0xf4, 0xa1, 0x7c, 0x47, 0xc9, 0x6c, 0xa9, 0x7b, 0xd8, 0xdb, 0x6f, 0x7e, 0x19, 0x26, 0x1f,
+	0x1f, 0xdc, 0xc4, 0xc5, 0x63, 0x78, 0xf1, 0xb3, 0x8b, 0x8e, 0x33, 0x7f, 0x6a, 0x7f, 0x33, 0xd8,
+	0xbd, 0x63, 0x08, 0xaa, 0x47, 0x7e, 0x00, 0x66, 0x8d, 0xc8, 0x9a, 0xac, 0xab, 0x25, 0xb3, 0x86,
+	0x73, 0x28, 0xa2, 0x1d, 0x51, 0xb0, 0x26, 0xeb, 0x72, 0x49, 0x4c, 0x6e, 0xf1, 0x28, 0x72, 0xda,
+	0x22, 0x4e, 0xce, 0xa8, 0xa8, 0x44, 0xd1, 0x64, 0xdd, 0xad, 0x24, 0x4e, 0x6e, 0xc4, 0xa8, 0x44,
+	0x79, 0x76, 0x89, 0xf9, 0x33, 0x1c, 0xb4, 0x9b, 0x67, 0x1c, 0x54, 0xb4, 0x6e, 0xfa, 0xb2, 0x46,
+	0x54, 0x74, 0xe5, 0xee, 0xc2, 0x1e, 0x0d, 0x7f, 0x82, 0x5a, 0xab, 0x9f, 0xa0, 0x86, 0xb4, 0xb1,
+	0xa3, 0x8d, 0xfd, 0x59, 0x1c, 0x4d, 0xfb, 0x09, 0xa5, 0x44, 0x3f, 0x2c, 0xe9, 0x03, 0xed, 0x0c,
+	0x52, 0xdc, 0x52, 0x12, 0xf3, 0x7b, 0xc8, 0xc7, 0xd0, 0x53, 0xde, 0x5a, 0x26, 0xdc, 0xa2, 0xe5,
+	0x57, 0xa2, 0x15, 0xff, 0xd1, 0xda, 0x0f, 0x28, 0xde, 0xd2, 0xdb, 0x23, 0xec, 0x71, 0xd2, 0xce,
+	0xd8, 0xa9, 0x5f, 0x8b, 0xd8, 0xe6, 0xed, 0x16, 0xbb, 0xb8, 0xf5, 0x00, 0x55, 0xd0, 0xdf, 0x38,
+	0xaa, 0xb5, 0x90, 0x75, 0x3a, 0x55, 0xd4, 0xf0, 0xeb, 0x5f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x89,
+	0xe6, 0x55, 0xf6, 0x70, 0x01, 0x00, 0x00,
 }

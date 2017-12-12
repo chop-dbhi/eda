@@ -2,11 +2,58 @@ package eda
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"testing"
 	"time"
 )
+
+type screeningAppointmentScheduled struct {
+	SubjectId    string    `json:"subject_id"`
+	SubjectPhone string    `json:"subject_phone"`
+	RecruiterId  string    `json:"recruiter_id"`
+	Time         time.Time `json:"time"`
+	Location     string    `json:"location"`
+}
+
+func TestMessageJSON(t *testing.T) {
+	m := &Message{
+		Type: "ScreeningAppointmentScheduled",
+		Data: JSON(&screeningAppointmentScheduled{
+			SubjectId:    "s-3932832",
+			SubjectPhone: "555-102-1039",
+			RecruiterId:  "r-9430439",
+			Time:         time.Date(2018, 1, 23, 14, 0, 0, 0, time.Local),
+			Location:     "Research Building",
+		}),
+	}
+
+	// Marshal bytes.
+	b, err := m.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Marshal JSON.
+	j1, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(string(j1))
+
+	var m1 Message
+	m1.Unmarshal(b)
+	j2, err := json.MarshalIndent(&m1, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(j1, j2) {
+		t.Errorf("JSON bytes differ. expected:\n%sgot:\n%s", string(j1), string(j2))
+	}
+}
 
 func testMessage(t *testing.T, m *Message) {
 	b, err := m.Marshal()

@@ -2,55 +2,64 @@ syntax = "proto3";
 
 package pb;
 
-import "google/rpc/status.proto";
+// Message is a concrete representation of a type for message-driven
+// use cases in a CQRS and Event Sourcing context. This model is intended
+// to sufficiently describe the most common metadata required for
+// specialized uses including events, commands, and queries.
+message Message {
+  // Unique ID of the message.
+	string id = 1;
+
+  // Time in nanoseconds the message was sent by the client.
+	int64 time = 2;
+
+  // String indicating the type of message.
+	string type = 3;
+
+  // Encoded domain-specific data in the message. This is a marshalled
+  // instance of Data which contains the underlying domain data.
+  bytes data = 4;
+
+  // Encoded domain-specific metadata in the message. This is a marshalled
+  // instance of Data which contains the underlying domain metadata.
+  bytes meta = 5;
+
+  // Correlation ID used to correlate related messages. This is particually
+  // applicable when implementing a saga.
+  string correlation_id = 6;
+
+  // Causal ID is the ID of a message that caused this message
+  // to be sent if any.
+  string causal_id = 7;
+}
+
+// Reply is a concrete representation of a reply type that are commonly
+// sent back by command and query handlers. 
+message Reply {
+  // Code that indicates the status of the reply.
+  int32 code = 1;
+
+  // Text-based message describing the status with respect to the code.
+  string msg = 2;
+
+  // Encoded domain-specific data in the reply. This is a marshalled
+  // instance of Data which contains the underlying domain data.
+  bytes data = 3;
+
+  // Encoded domain-specific metadata in the reply. This is a marshalled
+  // instance of Data which contains the underlying domain metadata.
+  bytes meta = 4;
+}
 
 message Data {
   // Encoding name of this data.
   string encoding = 1;
 
-  // Raw encoded bytes.
+  // Raw encoded bytes using the specified encoding.
   bytes data = 2;
 
-  // Schema is the name of the schema of the encoded data.
+  // Domain-specific name of the schema of the encoded data. The
+  // use case is to enable switching on the schema prior to
+  // decoding the data into a native type.
 	string schema = 3;
-}
-
-message Message {
-  // Unique ID of the message.
-	string id = 1;
-
-  // The time given by the sender of the message.
-	int64 time = 2;
-
-  // The message type.
-	string type = 3;
-
-  // Message data for the message type.
-  bytes data = 4;
-
-  // Metadata for the message itself.
-  bytes meta = 5;
-}
-
-message Event {
-  Message msg = 1;
-
-  // An optional event ID that is the cause of this event.
-	repeated string causes = 2;
-
-  // ID of the aggregate this event pertains to.
-  string aggregate = 3;
-}
-
-message Command {
-  Message msg = 1;
-
-  // ID of the aggregate this command applies to.
-  string aggregate = 2;
-}
-
-message Reply {
-  google.rpc.Status status = 1;
-
-  bytes data = 2;
 }
