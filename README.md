@@ -53,7 +53,7 @@ m := eda.Message{
 }
 ```
 
-The use of `eda.JSON` will convert the domain event into a `eda.Data` type with a JSON encoding. Additional built-in codecs including `eda.Proto`, `eda.String`, and `eda.Bytes`. [Refer to the docs](https://godoc.org/github.com/chop-dbhi/eda/#Message) for additional fields that can be set on the `Message` type.
+The use of `eda.JSON` will convert the domain event into a `eda.Data` type with a JSON encoding, however other [codecs](https://godoc.org/github.com/chop-dbhi/eda/codec) are supported. [Refer to the docs](https://godoc.org/github.com/chop-dbhi/eda/#Message) for additional fields that can be set on the `Message` type.
 
 When the message is marshalled, the domain event will be internally marshalled to JSON. A call to `Marshal` will automatically generate a unique ID and set the current time on the message. These values can be set ahead of time if more control is needed.
 

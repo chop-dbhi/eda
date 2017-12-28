@@ -2,26 +2,33 @@
 package codec
 
 import (
+	"bytes"
 	"encoding"
 	"encoding/json"
 	"errors"
 
+	gmsgp "github.com/glycerine/greenpack/msgp"
 	"github.com/golang/protobuf/proto"
+	"github.com/tinylib/msgp/msgp"
 )
 
 var (
-	Bytes  = &bytesCodec{}
-	Binary = &binaryCodec{}
-	String = &stringCodec{}
-	JSON   = &jsonCodec{}
-	Proto  = &protoCodec{}
+	Bytes     = &bytesCodec{}
+	Binary    = &binaryCodec{}
+	String    = &stringCodec{}
+	JSON      = &jsonCodec{}
+	Proto     = &protoCodec{}
+	Msgpack   = &msgpackCodec{}
+	Greenpack = &greenpackCodec{}
 
 	codecs = map[string]Codec{
-		"bytes":  Bytes,
-		"binary": Binary,
-		"string": String,
-		"json":   JSON,
-		"proto":  Proto,
+		"bytes":     Bytes,
+		"binary":    Binary,
+		"string":    String,
+		"json":      JSON,
+		"proto":     Proto,
+		"msgpack":   Msgpack,
+		"greenpack": Greenpack,
 	}
 )
 
@@ -119,10 +126,55 @@ func (e *protoCodec) Marshal(v interface{}) ([]byte, error) {
 }
 
 func (e *protoCodec) Unmarshal(b []byte, v interface{}) error {
-	x, ok := v.(proto.Message)
-	if !ok {
-		return errors.New("proto.Message required")
+	if x, ok := v.(proto.Message); ok {
+		return proto.Unmarshal(b, x)
 	}
 
-	return proto.Unmarshal(b, x)
+	return errors.New("proto.Message required")
+}
+
+type msgpackCodec struct{}
+
+func (e *msgpackCodec) Marshal(v interface{}) ([]byte, error) {
+	if m, ok := v.(msgp.Encodable); ok {
+		buf := bytes.NewBuffer(nil)
+		if err := msgp.Encode(buf, m); err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	}
+
+	return nil, errors.New("msgpack encodable required")
+}
+
+func (e *msgpackCodec) Unmarshal(b []byte, v interface{}) error {
+	if m, ok := v.(msgp.Decodable); ok {
+		buf := bytes.NewBuffer(b)
+		return msgp.Decode(buf, m)
+	}
+
+	return errors.New("msgpack decodable required")
+}
+
+type greenpackCodec struct{}
+
+func (e *greenpackCodec) Marshal(v interface{}) ([]byte, error) {
+	if m, ok := v.(gmsgp.Encodable); ok {
+		buf := bytes.NewBuffer(nil)
+		if err := gmsgp.Encode(buf, m); err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	}
+
+	return nil, errors.New("greenpack encodable required")
+}
+
+func (e *greenpackCodec) Unmarshal(b []byte, v interface{}) error {
+	if m, ok := v.(gmsgp.Decodable); ok {
+		buf := bytes.NewBuffer(b)
+		return gmsgp.Decode(buf, m)
+	}
+
+	return errors.New("greenpack decodable required")
 }

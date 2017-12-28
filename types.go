@@ -8,8 +8,10 @@ import (
 
 	"github.com/chop-dbhi/eda/codec"
 	"github.com/chop-dbhi/eda/internal/pb"
+	gmsgp "github.com/glycerine/greenpack/msgp"
 	"github.com/golang/protobuf/proto"
 	"github.com/nats-io/nuid"
+	"github.com/tinylib/msgp/msgp"
 )
 
 var (
@@ -383,7 +385,7 @@ func (d *Data) Decode(v interface{}) error {
 	return c.Unmarshal(d.bytes, v)
 }
 
-// Binary returns Data that encodes itself to bytes.
+// Binary returns Data that encodes the binary marshaler.
 func Binary(m encoding.BinaryMarshaler) *Data {
 	return &Data{
 		Encoding: "binary",
@@ -391,7 +393,7 @@ func Binary(m encoding.BinaryMarshaler) *Data {
 	}
 }
 
-// Bytes returns Data that encodes and decodes bytes.
+// Bytes returns Data that encodes raw bytes.
 func Bytes(b []byte) *Data {
 	return &Data{
 		Encoding: "bytes",
@@ -399,7 +401,7 @@ func Bytes(b []byte) *Data {
 	}
 }
 
-// String returns Data that encodes and decodes a string.
+// String returns Data that encodes the string.
 func String(s string) *Data {
 	return &Data{
 		Encoding: "string",
@@ -407,7 +409,7 @@ func String(s string) *Data {
 	}
 }
 
-// JSON returns Data that encodes and decodes the JSON-encodable value.
+// JSON returns Data that encodes the JSON-encodable value.
 func JSON(v interface{}) *Data {
 	return &Data{
 		Encoding: "json",
@@ -415,10 +417,27 @@ func JSON(v interface{}) *Data {
 	}
 }
 
-// Proto returns Data that encodes and decodes the proto message.
+// Proto returns Data that encodes the proto message.
 func Proto(m proto.Message) *Data {
 	return &Data{
 		Encoding: "proto",
+		value:    m,
+	}
+}
+
+// Msgpack returns Data that encodes the msgpack message.
+func Msgpack(m msgp.Encodable) *Data {
+	return &Data{
+		Encoding: "msgpack",
+		value:    m,
+	}
+
+}
+
+// Greenpack returns Data that encodes the greenpack message.
+func Greenpack(m gmsgp.Encodable) *Data {
+	return &Data{
+		Encoding: "greenpack",
 		value:    m,
 	}
 }
