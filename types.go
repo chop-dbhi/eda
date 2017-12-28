@@ -16,16 +16,10 @@ import (
 
 var (
 	// NewID returns a new unique ID used for the messages.
-	NewID IDGen = GenNatsID
+	// This function is used when a message is marshaled
+	// and does not have an ID set.
+	NewID func() string = nuid.Next
 )
-
-// GenNatsID generates a new ID using the NATS nuid library.
-func GenNatsID() string {
-	return nuid.Next()
-}
-
-// IDGen is a type for generating unique message IDs.
-type IDGen func() string
 
 // Message represents a general message type.
 type Message struct {
