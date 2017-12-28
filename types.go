@@ -8,7 +8,7 @@ import (
 
 	"github.com/chop-dbhi/eda/codec"
 	"github.com/chop-dbhi/eda/internal/pb"
-	gmsgp "github.com/glycerine/greenpack/msgp"
+	gpack "github.com/glycerine/greenpack/msgp"
 	"github.com/golang/protobuf/proto"
 	"github.com/nats-io/nuid"
 	"github.com/tinylib/msgp/msgp"
@@ -435,7 +435,7 @@ func Msgpack(m msgp.Encodable) *Data {
 }
 
 // Greenpack returns Data that encodes the greenpack message.
-func Greenpack(m gmsgp.Encodable) *Data {
+func Greenpack(m gpack.Encodable) *Data {
 	return &Data{
 		Encoding: "greenpack",
 		value:    m,

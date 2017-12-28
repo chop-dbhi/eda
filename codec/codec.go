@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	gmsgp "github.com/glycerine/greenpack/msgp"
+	gpack "github.com/glycerine/greenpack/msgp"
 	"github.com/golang/protobuf/proto"
 	"github.com/tinylib/msgp/msgp"
 )
@@ -159,9 +159,9 @@ func (e *msgpackCodec) Unmarshal(b []byte, v interface{}) error {
 type greenpackCodec struct{}
 
 func (e *greenpackCodec) Marshal(v interface{}) ([]byte, error) {
-	if m, ok := v.(gmsgp.Encodable); ok {
+	if m, ok := v.(gpack.Encodable); ok {
 		buf := bytes.NewBuffer(nil)
-		if err := gmsgp.Encode(buf, m); err != nil {
+		if err := gpack.Encode(buf, m); err != nil {
 			return nil, err
 		}
 		return buf.Bytes(), nil
@@ -171,9 +171,9 @@ func (e *greenpackCodec) Marshal(v interface{}) ([]byte, error) {
 }
 
 func (e *greenpackCodec) Unmarshal(b []byte, v interface{}) error {
-	if m, ok := v.(gmsgp.Decodable); ok {
+	if m, ok := v.(gpack.Decodable); ok {
 		buf := bytes.NewBuffer(b)
-		return gmsgp.Decode(buf, m)
+		return gpack.Decode(buf, m)
 	}
 
 	return errors.New("greenpack decodable required")
